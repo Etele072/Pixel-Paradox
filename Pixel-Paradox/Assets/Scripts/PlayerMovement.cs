@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -10,6 +11,13 @@ public class PlayerMovement : MonoBehaviour
     [Header("Movement")]
     public float moveSpeed = 5f;
     float horizontalMovement;
+
+    [Header("Dashing")]
+    public bool canDash = true;
+    public bool isDashing;
+    public float dashingPower = 24f;
+    public float dashingTime = 0.2f;
+    public float dashingCooldown = 1f;
 
     [Header("Jumping")]
     public float jumpPower = 10f;
@@ -26,6 +34,11 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
+        if (isDashing)
+        {
+            return;
+        }
+
         rb.linearVelocity = new Vector2(horizontalMovement * moveSpeed, rb.linearVelocity.y);
 
         Gravity();
@@ -73,6 +86,35 @@ public class PlayerMovement : MonoBehaviour
             transform.localScale = new Vector3(1, 1, 1);
         else if (horizontalMovement < 0)
             transform.localScale = new Vector3(-1, 1, 1);
+    }
+
+    public void Dash(InputAction.CallbackContext context)
+    {
+        if (context.performed && canDash)
+        {
+            StartCoroutine(DashCoroutine());
+        }
+    }
+
+    private IEnumerator DashCoroutine()
+    {
+        canDash = false;
+        isDashing = true;
+        float originalGravity = rb.gravityScale;
+        
+        rb.gravityScale = 0f;
+        
+        // A jelenlegi velocity helyett a karakter irányát (localScale.x) használjuk.
+        // Így álló helyzetbõl is kilõ a karakter.
+        rb.linearVelocity = new Vector2(transform.localScale.x * dashingPower, 0f);
+
+        yield return new WaitForSeconds(dashingTime);
+
+        rb.gravityScale = originalGravity;
+        isDashing = false;
+
+        yield return new WaitForSeconds(dashingCooldown);
+        canDash = true;
     }
 
     public void Move(InputAction.CallbackContext context)
