@@ -61,6 +61,9 @@ public class PlayerMovement : MonoBehaviour
 
     private void UpdateAnimations()
     {
+
+        if (isDashing) return;
+
         bool grounded = isGrounded();
         animator.SetBool("isJumping", !grounded);
 
@@ -92,6 +95,11 @@ public class PlayerMovement : MonoBehaviour
     {
         if (context.performed && canDash)
         {
+            animator.SetFloat("xVelocity", Mathf.Abs(horizontalMovement));
+            animator.SetBool("isJumping", !isGrounded());
+
+            animator.SetTrigger("DashTrigger");
+
             StartCoroutine(DashCoroutine());
         }
     }
@@ -100,6 +108,9 @@ public class PlayerMovement : MonoBehaviour
     {
         canDash = false;
         isDashing = true;
+
+        animator.SetBool("isDashing", true);
+
         float originalGravity = rb.gravityScale;
         
         rb.gravityScale = 0f;
@@ -112,6 +123,8 @@ public class PlayerMovement : MonoBehaviour
 
         rb.gravityScale = originalGravity;
         isDashing = false;
+
+        animator.SetBool("isDashing", false);
 
         yield return new WaitForSeconds(dashingCooldown);
         canDash = true;
