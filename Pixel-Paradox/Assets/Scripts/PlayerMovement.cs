@@ -21,6 +21,10 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Jumping")]
     public float jumpPower = 10f;
+    public float coyoteTime = 0.2f;    
+    private float coyoteTimeCounter;
+    public float jumpBufferTime = 0.2f;
+    private float jumpBufferCounter;
 
     [Header("GroundCheck")]
     public Transform groundCheckPos;
@@ -34,9 +38,25 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        if (isDashing)
+        if (isDashing) return;
+
+        if (isGrounded())
         {
-            return;
+            coyoteTimeCounter = coyoteTime;
+        }
+        else
+        {
+            coyoteTimeCounter -= Time.deltaTime;
+        }
+
+        if (jumpBufferCounter > 0)
+        {
+            jumpBufferCounter -= Time.deltaTime;
+        }
+
+        if (jumpBufferCounter > 0f && coyoteTimeCounter > 0f)
+        {
+            ExecuteJump();
         }
 
         rb.linearVelocity = new Vector2(horizontalMovement * moveSpeed, rb.linearVelocity.y);
@@ -45,6 +65,30 @@ public class PlayerMovement : MonoBehaviour
         Flip();
         UpdateAnimations();
     }
+
+    private void ExecuteJump()
+    {
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpPower);
+
+
+        jumpBufferCounter = 0f;
+        coyoteTimeCounter = 0f;
+    }
+
+    public void Jump(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            jumpBufferCounter = jumpBufferTime;
+        }
+
+        if (context.canceled && rb.linearVelocity.y > 0)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * 0.5f);
+            coyoteTimeCounter = 0f;
+        }
+    }
+
 
     private void Gravity()
     {
@@ -61,7 +105,6 @@ public class PlayerMovement : MonoBehaviour
 
     private void UpdateAnimations()
     {
-
         if (isDashing) return;
 
         bool grounded = isGrounded();
@@ -70,14 +113,8 @@ public class PlayerMovement : MonoBehaviour
         if (!grounded)
         {
             float yVel = rb.linearVelocity.y;
-            if (yVel < 3f && yVel > -3f)
-            {
-                animator.SetFloat("yVelocity", 0f);
-            }
-            else
-            {
-                animator.SetFloat("yVelocity", yVel);
-            }
+            if (yVel < 3f && yVel > -3f) animator.SetFloat("yVelocity", 0f);
+            else animator.SetFloat("yVelocity", yVel);
         }
 
         animator.SetFloat("xVelocity", Mathf.Abs(horizontalMovement));
@@ -85,10 +122,8 @@ public class PlayerMovement : MonoBehaviour
 
     private void Flip()
     {
-        if (horizontalMovement > 0)
-            transform.localScale = new Vector3(1, 1, 1);
-        else if (horizontalMovement < 0)
-            transform.localScale = new Vector3(-1, 1, 1);
+        if (horizontalMovement > 0) transform.localScale = new Vector3(1, 1, 1);
+        else if (horizontalMovement < 0) transform.localScale = new Vector3(-1, 1, 1);
     }
 
     public void Dash(InputAction.CallbackContext context)
@@ -97,9 +132,7 @@ public class PlayerMovement : MonoBehaviour
         {
             animator.SetFloat("xVelocity", Mathf.Abs(horizontalMovement));
             animator.SetBool("isJumping", !isGrounded());
-
             animator.SetTrigger("DashTrigger");
-
             StartCoroutine(DashCoroutine());
         }
     }
@@ -108,24 +141,14 @@ public class PlayerMovement : MonoBehaviour
     {
         canDash = false;
         isDashing = true;
-
         animator.SetBool("isDashing", true);
-
         float originalGravity = rb.gravityScale;
-        
         rb.gravityScale = 0f;
-        
-        // A jelenlegi velocity helyett a karakter irányát (localScale.x) használjuk.
-        // Így álló helyzetbõl is kilõ a karakter.
         rb.linearVelocity = new Vector2(transform.localScale.x * dashingPower, 0f);
-
         yield return new WaitForSeconds(dashingTime);
-
         rb.gravityScale = originalGravity;
         isDashing = false;
-
         animator.SetBool("isDashing", false);
-
         yield return new WaitForSeconds(dashingCooldown);
         canDash = true;
     }
@@ -133,19 +156,6 @@ public class PlayerMovement : MonoBehaviour
     public void Move(InputAction.CallbackContext context)
     {
         horizontalMovement = context.ReadValue<Vector2>().x;
-    }
-
-    public void Jump(InputAction.CallbackContext context)
-    {
-        if (context.performed && isGrounded())
-        {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpPower);
-        }
-
-        if (context.canceled && rb.linearVelocity.y > 0)
-        {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * 0.5f);
-        }
     }
 
     private bool isGrounded()
