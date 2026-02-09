@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using UnityEngine;
 
@@ -11,9 +10,9 @@ public class MusicManager : MonoBehaviour
     [SerializeField]
     private AudioSource musicSource;
 
-    public void Awake()
+    private void Awake()
     {
-        if(Instance != null)
+        if (Instance != null)
         {
             Destroy(gameObject);
         }
@@ -32,10 +31,10 @@ public class MusicManager : MonoBehaviour
     IEnumerator AnimateMusicCrossfade(AudioClip nextTrack, float fadeDuration = 0.5f)
     {
         float percent = 0;
-        while(percent < 1)
+        while (percent < 1)
         {
             percent += Time.deltaTime * 1 / fadeDuration;
-            musicSource.volume = Mathf.Lerp(1f,0,percent);
+            musicSource.volume = Mathf.Lerp(1f, 0, percent);
             yield return null;
         }
 
@@ -43,10 +42,10 @@ public class MusicManager : MonoBehaviour
         musicSource.Play();
 
         percent = 0;
-        while(percent < 1)
+        while (percent < 1)
         {
             percent += Time.deltaTime * 1 / fadeDuration;
-            musicSource.volume = Mathf.Lerp(0,1f,percent);
+            musicSource.volume = Mathf.Lerp(0, 1f, percent);
             yield return null;
         }
     }
