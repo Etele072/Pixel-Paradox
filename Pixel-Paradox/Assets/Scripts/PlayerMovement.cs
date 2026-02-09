@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement; // Szükséges a pálya újratöltéséhez
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -21,7 +22,7 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Jumping")]
     public float jumpPower = 10f;
-    public float coyoteTime = 0.2f;    
+    public float coyoteTime = 0.2f;
     private float coyoteTimeCounter;
     public float jumpBufferTime = 0.2f;
     private float jumpBufferCounter;
@@ -59,6 +60,7 @@ public class PlayerMovement : MonoBehaviour
             ExecuteJump();
         }
 
+        // rb.linearVelocity használata (Unity 2023+ verziókhoz)
         rb.linearVelocity = new Vector2(horizontalMovement * moveSpeed, rb.linearVelocity.y);
 
         Gravity();
@@ -69,8 +71,6 @@ public class PlayerMovement : MonoBehaviour
     private void ExecuteJump()
     {
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpPower);
-
-
         jumpBufferCounter = 0f;
         coyoteTimeCounter = 0f;
     }
@@ -88,7 +88,6 @@ public class PlayerMovement : MonoBehaviour
             coyoteTimeCounter = 0f;
         }
     }
-
 
     private void Gravity()
     {
@@ -130,9 +129,6 @@ public class PlayerMovement : MonoBehaviour
     {
         if (context.performed && canDash)
         {
-            animator.SetFloat("xVelocity", Mathf.Abs(horizontalMovement));
-            animator.SetBool("isJumping", !isGrounded());
-            animator.SetTrigger("DashTrigger");
             StartCoroutine(DashCoroutine());
         }
     }
@@ -142,13 +138,18 @@ public class PlayerMovement : MonoBehaviour
         canDash = false;
         isDashing = true;
         animator.SetBool("isDashing", true);
+        animator.SetTrigger("DashTrigger");
+
         float originalGravity = rb.gravityScale;
         rb.gravityScale = 0f;
         rb.linearVelocity = new Vector2(transform.localScale.x * dashingPower, 0f);
+
         yield return new WaitForSeconds(dashingTime);
+
         rb.gravityScale = originalGravity;
         isDashing = false;
         animator.SetBool("isDashing", false);
+
         yield return new WaitForSeconds(dashingCooldown);
         canDash = true;
     }
@@ -161,6 +162,33 @@ public class PlayerMovement : MonoBehaviour
     private bool isGrounded()
     {
         return Physics2D.OverlapBox(groundCheckPos.position, groundCheckSize, 0, groundLayer);
+    }
+
+    // --- HALÁL ÉS ÜTKÖZÉS KEZELÉSE ---
+
+    // Ez kezeli a sima és a Composite Collider-t is (ha NEM trigger)
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.CompareTag("Spike"))
+        {
+            Die();
+        }
+    }
+
+    // Ez kezeli a Trigger típusú tüskéket
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.CompareTag("Spike"))
+        {
+            Die();
+        }
+    }
+
+    private void Die()
+    {
+        Debug.Log("Játékos meghalt!");
+        // Újratölti az aktuális jelenetet
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     private void OnDrawGizmosSelected()
