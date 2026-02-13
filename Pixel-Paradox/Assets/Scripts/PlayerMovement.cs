@@ -1,8 +1,9 @@
 using System.Collections;
+using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement; // Szükséges a pálya újratöltéséhez
-
+using UnityEngine.SceneManagement;
+using Debug = UnityEngine.Debug;
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Components")]
@@ -12,6 +13,7 @@ public class PlayerMovement : MonoBehaviour
     [Header("Movement")]
     public float moveSpeed = 5f;
     float horizontalMovement;
+    public bool isDead = false;
 
     [Header("Dashing")]
     public bool canDash = true;
@@ -39,6 +41,7 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
+        if (isDead) return;
         if (isDashing) return;
 
         if (isGrounded())
@@ -60,7 +63,6 @@ public class PlayerMovement : MonoBehaviour
             ExecuteJump();
         }
 
-        // rb.linearVelocity használata (Unity 2023+ verziókhoz)
         rb.linearVelocity = new Vector2(horizontalMovement * moveSpeed, rb.linearVelocity.y);
 
         Gravity();
@@ -164,9 +166,6 @@ public class PlayerMovement : MonoBehaviour
         return Physics2D.OverlapBox(groundCheckPos.position, groundCheckSize, 0, groundLayer);
     }
 
-    // --- HALÁL ÉS ÜTKÖZÉS KEZELÉSE ---
-
-    // Ez kezeli a sima és a Composite Collider-t is (ha NEM trigger)
     private void OnCollisionEnter2D(Collision2D collision)
     {
         if (collision.gameObject.CompareTag("Spike"))
@@ -175,7 +174,6 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    // Ez kezeli a Trigger típusú tüskéket
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.CompareTag("Spike"))
@@ -186,8 +184,29 @@ public class PlayerMovement : MonoBehaviour
 
     private void Die()
     {
-        Debug.Log("Játékos meghalt!");
-        // Újratölti az aktuális jelenetet
+        if (isDashing == false)
+        {
+            StartCoroutine(DieCoroutine());
+        }
+    }
+
+    private IEnumerator DieCoroutine()
+    {
+        if (isDead) yield break;
+        isDead = true;
+
+        rb.linearVelocity = Vector2.zero;
+        rb.isKinematic = true;
+        rb.simulated = false;  
+ 
+        animator.SetFloat("xVelocity", 0);
+        animator.SetFloat("yVelocity", 0);
+        animator.SetBool("isJumping", false);
+
+        animator.Play("Death");
+
+        yield return new WaitForSecondsRealtime(1.5f);
+
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
