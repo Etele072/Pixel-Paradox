@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -46,6 +46,9 @@ public class PlayerMovement : MonoBehaviour
     private Vector2 originalOffset;
     private bool isCrouching = false;
 
+    [Header("Crawl Settings")]
+    public float crawlSpeed = 1.5f; // ÚJ: külön sebesség kúszáshoz
+
     void Start()
     {
         if (playerCollider != null)
@@ -62,30 +65,35 @@ public class PlayerMovement : MonoBehaviour
         bool grounded = isGrounded();
 
         if (grounded)
-        {
             coyoteTimeCounter = coyoteTime;
+        else
+            coyoteTimeCounter -= Time.deltaTime;
+
+        if (jumpBufferCounter > 0)
+            jumpBufferCounter -= Time.deltaTime;
+
+        if (jumpBufferCounter > 0f && coyoteTimeCounter > 0f)
+            ExecuteJump();
+
+        float speed;
+
+        if (isCrouching)
+        {
+            // Ha a horizontalMovement 0, a karakter állni fog (Blend Tree: Crouch).
+            // Ha a horizontalMovement 1, a karakter mászni fog (Blend Tree: Crawl).
+            speed = crawlSpeed;
         }
         else
         {
-            coyoteTimeCounter -= Time.deltaTime;
+            speed = moveSpeed;
         }
 
-        if (jumpBufferCounter > 0)
-        {
-            jumpBufferCounter -= Time.deltaTime;
-        }
-
-        if (jumpBufferCounter > 0f && coyoteTimeCounter > 0f)
-        {
-            ExecuteJump();
-        }
-
-        float speed = isCrouching ? crouchSpeed : moveSpeed;
         rb.linearVelocity = new Vector2(horizontalMovement * speed, rb.linearVelocity.y);
+
 
         Gravity();
         Flip();
-        UpdateAnimations(grounded); 
+        UpdateAnimations(grounded);
     }
 
     private void StartCrouch()
@@ -100,6 +108,7 @@ public class PlayerMovement : MonoBehaviour
 
         float newOffsetY = originalBottom + crouchSize.y / 2f;
         playerCollider.offset = new Vector2(originalOffset.x, newOffsetY);
+
         Physics2D.SyncTransforms();
     }
 
@@ -122,7 +131,14 @@ public class PlayerMovement : MonoBehaviour
 
     public void Jump(InputAction.CallbackContext context)
     {
-        if (context.performed) jumpBufferCounter = jumpBufferTime;
+        if (context.performed)
+        {
+            jumpBufferCounter = jumpBufferTime;
+            if (isCrouching)
+            {
+                StopCrouch();  // Felállás ugráskor
+            }
+        }
 
         if (context.canceled && rb.linearVelocity.y > 0)
         {
@@ -130,6 +146,7 @@ public class PlayerMovement : MonoBehaviour
             coyoteTimeCounter = 0f;
         }
     }
+
 
     private void Gravity()
     {
@@ -148,14 +165,16 @@ public class PlayerMovement : MonoBehaviour
     {
         if (isDashing) return;
 
-
         animator.SetBool("isJumping", !grounded);
+        animator.SetBool("isCrouching", isCrouching); 
 
         if (!grounded)
         {
             float yVel = rb.linearVelocity.y;
-            if (yVel < 3f && yVel > -3f) animator.SetFloat("yVelocity", 0f);
-            else animator.SetFloat("yVelocity", yVel);
+            if (yVel < 3f && yVel > -3f)
+                animator.SetFloat("yVelocity", 0f);
+            else
+                animator.SetFloat("yVelocity", yVel);
         }
 
         animator.SetFloat("xVelocity", Mathf.Abs(horizontalMovement));
@@ -163,13 +182,16 @@ public class PlayerMovement : MonoBehaviour
 
     private void Flip()
     {
-        if (horizontalMovement > 0) transform.localScale = new Vector3(1, 1, 1);
-        else if (horizontalMovement < 0) transform.localScale = new Vector3(-1, 1, 1);
+        if (horizontalMovement > 0)
+            transform.localScale = new Vector3(1, 1, 1);
+        else if (horizontalMovement < 0)
+            transform.localScale = new Vector3(-1, 1, 1);
     }
 
     public void Dash(InputAction.CallbackContext context)
     {
-        if (context.performed && canDash) StartCoroutine(DashCoroutine());
+        if (context.performed && canDash)
+            StartCoroutine(DashCoroutine());
     }
 
     private IEnumerator DashCoroutine()
@@ -205,12 +227,14 @@ public class PlayerMovement : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.gameObject.CompareTag("Spike")) Die();
+        if (collision.gameObject.CompareTag("Spike"))
+            Die();
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.CompareTag("Spike")) Die();
+        if (collision.CompareTag("Spike"))
+            Die();
     }
 
     private void Die()
@@ -227,7 +251,9 @@ public class PlayerMovement : MonoBehaviour
 
     public void Crouch(InputAction.CallbackContext context)
     {
-        if (context.performed) StartCrouch();
-        else if (context.canceled) StopCrouch();
+        if (context.performed)
+            StartCrouch();
+        else if (context.canceled)
+            StopCrouch();
     }
 }
