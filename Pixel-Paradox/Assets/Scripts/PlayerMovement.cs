@@ -1,13 +1,14 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement; // Szükséges a pálya újratöltéséhez
+using UnityEngine.SceneManagement;
 
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Components")]
     public Rigidbody2D rb;
     public Animator animator;
+    [SerializeField] private BoxCollider2D playerCollider;
 
     [Header("Movement")]
     public float moveSpeed = 5f;
@@ -37,11 +38,30 @@ public class PlayerMovement : MonoBehaviour
     public float maxFallSpeed = 18f;
     public float fallSpeedMultiplier = 2f;
 
+    [Header("Crouch Settings")]
+    public float crouchSpeed = 2.5f;
+    [SerializeField] private Vector2 crouchSize = new Vector2(1f, 0.8f);
+    [SerializeField] private Vector2 crouchOffset = new Vector2(0f, -0.6f);
+    private Vector2 originalSize;
+    private Vector2 originalOffset;
+    private bool isCrouching = false;
+
+    void Start()
+    {
+        if (playerCollider != null)
+        {
+            originalSize = playerCollider.size;
+            originalOffset = playerCollider.offset;
+        }
+    }
+
     void Update()
     {
         if (isDashing) return;
 
-        if (isGrounded())
+        bool grounded = isGrounded();
+
+        if (grounded)
         {
             coyoteTimeCounter = coyoteTime;
         }
@@ -60,12 +80,37 @@ public class PlayerMovement : MonoBehaviour
             ExecuteJump();
         }
 
-        // rb.linearVelocity használata (Unity 2023+ verziókhoz)
-        rb.linearVelocity = new Vector2(horizontalMovement * moveSpeed, rb.linearVelocity.y);
+        float speed = isCrouching ? crouchSpeed : moveSpeed;
+        rb.linearVelocity = new Vector2(horizontalMovement * speed, rb.linearVelocity.y);
 
         Gravity();
         Flip();
-        UpdateAnimations();
+        UpdateAnimations(grounded); 
+    }
+
+    private void StartCrouch()
+    {
+        if (isCrouching) return;
+        isCrouching = true;
+        animator.SetBool("isCrouching", true);
+
+        float originalBottom = originalOffset.y - originalSize.y / 2f;
+
+        playerCollider.size = crouchSize;
+
+        float newOffsetY = originalBottom + crouchSize.y / 2f;
+        playerCollider.offset = new Vector2(originalOffset.x, newOffsetY);
+        Physics2D.SyncTransforms();
+    }
+
+    private void StopCrouch()
+    {
+        if (!isCrouching) return;
+        isCrouching = false;
+        animator.SetBool("isCrouching", false);
+
+        playerCollider.size = originalSize;
+        playerCollider.offset = originalOffset;
     }
 
     private void ExecuteJump()
@@ -77,10 +122,7 @@ public class PlayerMovement : MonoBehaviour
 
     public void Jump(InputAction.CallbackContext context)
     {
-        if (context.performed)
-        {
-            jumpBufferCounter = jumpBufferTime;
-        }
+        if (context.performed) jumpBufferCounter = jumpBufferTime;
 
         if (context.canceled && rb.linearVelocity.y > 0)
         {
@@ -102,11 +144,11 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    private void UpdateAnimations()
+    private void UpdateAnimations(bool grounded)
     {
         if (isDashing) return;
 
-        bool grounded = isGrounded();
+
         animator.SetBool("isJumping", !grounded);
 
         if (!grounded)
@@ -127,10 +169,7 @@ public class PlayerMovement : MonoBehaviour
 
     public void Dash(InputAction.CallbackContext context)
     {
-        if (context.performed && canDash)
-        {
-            StartCoroutine(DashCoroutine());
-        }
+        if (context.performed && canDash) StartCoroutine(DashCoroutine());
     }
 
     private IEnumerator DashCoroutine()
@@ -164,30 +203,18 @@ public class PlayerMovement : MonoBehaviour
         return Physics2D.OverlapBox(groundCheckPos.position, groundCheckSize, 0, groundLayer);
     }
 
-    // --- HALÁL ÉS ÜTKÖZÉS KEZELÉSE ---
-
-    // Ez kezeli a sima és a Composite Collider-t is (ha NEM trigger)
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.gameObject.CompareTag("Spike"))
-        {
-            Die();
-        }
+        if (collision.gameObject.CompareTag("Spike")) Die();
     }
 
-    // Ez kezeli a Trigger típusú tüskéket
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.CompareTag("Spike"))
-        {
-            Die();
-        }
+        if (collision.CompareTag("Spike")) Die();
     }
 
     private void Die()
     {
-        Debug.Log("Játékos meghalt!");
-        // Újratölti az aktuális jelenetet
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
@@ -196,5 +223,11 @@ public class PlayerMovement : MonoBehaviour
         if (groundCheckPos == null) return;
         Gizmos.color = Color.white;
         Gizmos.DrawWireCube(groundCheckPos.position, groundCheckSize);
+    }
+
+    public void Crouch(InputAction.CallbackContext context)
+    {
+        if (context.performed) StartCrouch();
+        else if (context.canceled) StopCrouch();
     }
 }

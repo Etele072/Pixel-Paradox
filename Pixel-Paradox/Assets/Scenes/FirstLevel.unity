@@ -1099,7 +1099,7 @@ Rigidbody2D:
     serializedVersion: 2
     m_Bits: 0
   m_Interpolate: 1
-  m_SleepingMode: 1
+  m_SleepingMode: 0
   m_CollisionDetection: 1
   m_Constraints: 4
 --- !u!114 &280905680
@@ -1116,8 +1116,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   rb: {fileID: 280905679}
   animator: {fileID: 280905684}
+  playerCollider: {fileID: 280905678}
   moveSpeed: 5
-  canDash: 1
+  canDash: 0
   isDashing: 0
   dashingPower: 24
   dashingTime: 0.2
@@ -1133,6 +1134,9 @@ MonoBehaviour:
   baseGravity: 1.8
   maxFallSpeed: 18
   fallSpeedMultiplier: 2
+  crouchSpeed: 2
+  crouchSize: {x: 1, y: 0.8}
+  crouchOffset: {x: 0, y: -0.58}
 --- !u!114 &280905681
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1246,6 +1250,22 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: 120f7a75-4ffd-4aae-93ec-28a67b190b5f
     m_ActionName: 'Player/Dash[/Keyboard/leftShift]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 280905680}
+        m_TargetAssemblyTypeName: PlayerMovement, Assembly-CSharp
+        m_MethodName: Crouch
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: f1186e3c-8c1d-4bb9-9eed-3339ce249771
+    m_ActionName: 'Player/Crouch[/Keyboard/c]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player
