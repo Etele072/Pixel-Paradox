@@ -5,6 +5,10 @@ using UnityEngine.SceneManagement;
 
 public class PlayerMovement : MonoBehaviour
 {
+    [Header("Health & Checkpoint")]
+    private bool isDead = false;
+    private Vector2 checkpointPos; 
+
     [Header("Components")]
     public Rigidbody2D rb;
     public Animator animator;
@@ -38,19 +42,21 @@ public class PlayerMovement : MonoBehaviour
     public float maxFallSpeed = 18f;
     public float fallSpeedMultiplier = 2f;
 
-    [Header("Crouch Settings")]
+    [Header("Crouch & Crawl Settings")]
     public float crouchSpeed = 2.5f;
+    public float crawlSpeed = 1.5f;
     [SerializeField] private Vector2 crouchSize = new Vector2(1f, 0.8f);
     [SerializeField] private Vector2 crouchOffset = new Vector2(0f, -0.6f);
     private Vector2 originalSize;
     private Vector2 originalOffset;
     private bool isCrouching = false;
 
-    [Header("Crawl Settings")]
-    public float crawlSpeed = 1.5f; // ÚJ: külön sebesség kúszáshoz
-
     void Start()
     {
+        Application.targetFrameRate = 144;
+
+        checkpointPos = transform.position;
+
         if (playerCollider != null)
         {
             originalSize = playerCollider.size;
@@ -58,9 +64,9 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    void Update()
+    void FixedUpdate()
     {
-        if (isDashing) return;
+        if (isDead || isDashing) return;
 
         bool grounded = isGrounded();
 
@@ -75,52 +81,75 @@ public class PlayerMovement : MonoBehaviour
         if (jumpBufferCounter > 0f && coyoteTimeCounter > 0f)
             ExecuteJump();
 
-        float speed;
-
-        if (isCrouching)
-        {
-            // Ha a horizontalMovement 0, a karakter állni fog (Blend Tree: Crouch).
-            // Ha a horizontalMovement 1, a karakter mászni fog (Blend Tree: Crawl).
-            speed = crawlSpeed;
-        }
-        else
-        {
-            speed = moveSpeed;
-        }
-
+        float speed = isCrouching ? crawlSpeed : moveSpeed;
         rb.linearVelocity = new Vector2(horizontalMovement * speed, rb.linearVelocity.y);
-
 
         Gravity();
         Flip();
         UpdateAnimations(grounded);
     }
 
-    private void StartCrouch()
+    private void Die()
     {
-        if (isCrouching) return;
-        isCrouching = true;
-        animator.SetBool("isCrouching", true);
+        if (isDead) return;
+        isDead = true;
 
-        float originalBottom = originalOffset.y - originalSize.y / 2f;
+        horizontalMovement = 0;
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
 
-        playerCollider.size = crouchSize;
+        rb.constraints = RigidbodyConstraints2D.FreezeAll;
 
-        float newOffsetY = originalBottom + crouchSize.y / 2f;
-        playerCollider.offset = new Vector2(originalOffset.x, newOffsetY);
+        if (playerCollider != null)
+        {
+            playerCollider.enabled = false;
+        }
 
-        Physics2D.SyncTransforms();
-    }
-
-    private void StopCrouch()
-    {
-        if (!isCrouching) return;
-        isCrouching = false;
+        animator.SetBool("isDying", true);
+        animator.SetBool("isJumping", false);
         animator.SetBool("isCrouching", false);
+        animator.SetFloat("xVelocity", 0f);
 
-        playerCollider.size = originalSize;
-        playerCollider.offset = originalOffset;
+        StartCoroutine(DeathDelay());
     }
+
+    private IEnumerator DeathDelay()
+    {
+        yield return new WaitForSecondsRealtime(0.8f);
+
+        transform.position = checkpointPos;
+
+        isDead = false;
+        rb.constraints = RigidbodyConstraints2D.None;
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+        if (playerCollider != null)
+        {
+            playerCollider.enabled = true;
+        }
+
+        animator.SetBool("isDying", false);
+        animator.Play("Movement");
+    }
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.CompareTag("Spike"))
+            Die();
+
+        if (collision.CompareTag("Checkpoint"))
+        {
+            checkpointPos = collision.transform.position;
+            Debug.Log("Checkpoint mentve: " + checkpointPos);
+        }
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.CompareTag("Spike"))
+            Die();
+    }
+
 
     private void ExecuteJump()
     {
@@ -131,13 +160,11 @@ public class PlayerMovement : MonoBehaviour
 
     public void Jump(InputAction.CallbackContext context)
     {
+        if (isDead) return;
         if (context.performed)
         {
             jumpBufferCounter = jumpBufferTime;
-            if (isCrouching)
-            {
-                StopCrouch();  // Felállás ugráskor
-            }
+            if (isCrouching) StopCrouch();
         }
 
         if (context.canceled && rb.linearVelocity.y > 0)
@@ -146,7 +173,6 @@ public class PlayerMovement : MonoBehaviour
             coyoteTimeCounter = 0f;
         }
     }
-
 
     private void Gravity()
     {
@@ -163,21 +189,17 @@ public class PlayerMovement : MonoBehaviour
 
     private void UpdateAnimations(bool grounded)
     {
-        if (isDashing) return;
+        if (isDashing || isDead) return;
 
         animator.SetBool("isJumping", !grounded);
-        animator.SetBool("isCrouching", isCrouching); 
+        animator.SetBool("isCrouching", isCrouching);
+        animator.SetFloat("xVelocity", Mathf.Abs(horizontalMovement));
 
         if (!grounded)
         {
             float yVel = rb.linearVelocity.y;
-            if (yVel < 3f && yVel > -3f)
-                animator.SetFloat("yVelocity", 0f);
-            else
-                animator.SetFloat("yVelocity", yVel);
+            animator.SetFloat("yVelocity", (yVel < 3f && yVel > -3f) ? 0f : yVel);
         }
-
-        animator.SetFloat("xVelocity", Mathf.Abs(horizontalMovement));
     }
 
     private void Flip()
@@ -190,7 +212,7 @@ public class PlayerMovement : MonoBehaviour
 
     public void Dash(InputAction.CallbackContext context)
     {
-        if (context.performed && canDash)
+        if (!isDead && context.performed && canDash)
             StartCoroutine(DashCoroutine());
     }
 
@@ -217,7 +239,8 @@ public class PlayerMovement : MonoBehaviour
 
     public void Move(InputAction.CallbackContext context)
     {
-        horizontalMovement = context.ReadValue<Vector2>().x;
+        if (isDead) horizontalMovement = 0;
+        else horizontalMovement = context.ReadValue<Vector2>().x;
     }
 
     private bool isGrounded()
@@ -225,28 +248,28 @@ public class PlayerMovement : MonoBehaviour
         return Physics2D.OverlapBox(groundCheckPos.position, groundCheckSize, 0, groundLayer);
     }
 
-    private void OnCollisionEnter2D(Collision2D collision)
+    private void StartCrouch()
     {
-        if (collision.gameObject.CompareTag("Spike"))
-            Die();
+        if (isCrouching || isDead) return;
+        isCrouching = true;
+        animator.SetBool("isCrouching", true);
+
+        float originalBottom = originalOffset.y - originalSize.y / 2f;
+        playerCollider.size = crouchSize;
+        float newOffsetY = originalBottom + crouchSize.y / 2f;
+        playerCollider.offset = new Vector2(originalOffset.x, newOffsetY);
+
+        Physics2D.SyncTransforms();
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)
+    private void StopCrouch()
     {
-        if (collision.CompareTag("Spike"))
-            Die();
-    }
+        if (!isCrouching) return;
+        isCrouching = false;
+        animator.SetBool("isCrouching", false);
 
-    private void Die()
-    {
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        if (groundCheckPos == null) return;
-        Gizmos.color = Color.white;
-        Gizmos.DrawWireCube(groundCheckPos.position, groundCheckSize);
+        playerCollider.size = originalSize;
+        playerCollider.offset = originalOffset;
     }
 
     public void Crouch(InputAction.CallbackContext context)
@@ -255,5 +278,12 @@ public class PlayerMovement : MonoBehaviour
             StartCrouch();
         else if (context.canceled)
             StopCrouch();
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        if (groundCheckPos == null) return;
+        Gizmos.color = Color.white;
+        Gizmos.DrawWireCube(groundCheckPos.position, groundCheckSize);
     }
 }
