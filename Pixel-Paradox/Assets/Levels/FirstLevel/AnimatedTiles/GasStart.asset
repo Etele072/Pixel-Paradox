@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13b75c95f34a00d4e8c04f76b73312e6, type: 3}
+  m_Name: GasStart
+  m_EditorClassIdentifier: Unity.2D.Tilemap.Extras::UnityEngine.Tilemaps.AnimatedTile
+  m_AnimatedSprites:
+  - {fileID: -7407435489780553262, guid: 7ce485e71f8236d48bda81f9fe611a59, type: 3}
+  - {fileID: 2602718051526642221, guid: 7ce485e71f8236d48bda81f9fe611a59, type: 3}
+  - {fileID: 8311704188893587272, guid: 7ce485e71f8236d48bda81f9fe611a59, type: 3}
+  - {fileID: -694692443026664998, guid: 7ce485e71f8236d48bda81f9fe611a59, type: 3}
+  - {fileID: -4165760723257455736, guid: 7ce485e71f8236d48bda81f9fe611a59, type: 3}
+  - {fileID: -6923691946968574388, guid: 7ce485e71f8236d48bda81f9fe611a59, type: 3}
+  - {fileID: 3063975745649135869, guid: 7ce485e71f8236d48bda81f9fe611a59, type: 3}
+  - {fileID: -4246740165508334120, guid: 7ce485e71f8236d48bda81f9fe611a59, type: 3}
+  m_MinSpeed: 5
+  m_MaxSpeed: 5
+  m_AnimationStartTime: 0
+  m_AnimationStartFrame: 0
+  m_TileColliderType: 0
+  m_TileAnimationFlags: 0

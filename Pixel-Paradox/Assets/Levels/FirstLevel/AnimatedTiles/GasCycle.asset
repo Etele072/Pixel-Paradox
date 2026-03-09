@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13b75c95f34a00d4e8c04f76b73312e6, type: 3}
+  m_Name: GasCycle
+  m_EditorClassIdentifier: Unity.2D.Tilemap.Extras::UnityEngine.Tilemaps.AnimatedTile
+  m_AnimatedSprites:
+  - {fileID: 9043502971729145624, guid: 3a521d283cd78394783f5255487d4a73, type: 3}
+  - {fileID: 5889136806185405727, guid: 3a521d283cd78394783f5255487d4a73, type: 3}
+  - {fileID: -2592691820132550978, guid: 3a521d283cd78394783f5255487d4a73, type: 3}
+  - {fileID: 1104728710044908781, guid: 3a521d283cd78394783f5255487d4a73, type: 3}
+  - {fileID: -609617209482559869, guid: 3a521d283cd78394783f5255487d4a73, type: 3}
+  - {fileID: -5140056014850064287, guid: 3a521d283cd78394783f5255487d4a73, type: 3}
+  - {fileID: -7990767778231934208, guid: 3a521d283cd78394783f5255487d4a73, type: 3}
+  - {fileID: -4197552099890360634, guid: 3a521d283cd78394783f5255487d4a73, type: 3}
+  m_MinSpeed: 5
+  m_MaxSpeed: 5
+  m_AnimationStartTime: 0
+  m_AnimationStartFrame: 0
+  m_TileColliderType: 0
+  m_TileAnimationFlags: 0
