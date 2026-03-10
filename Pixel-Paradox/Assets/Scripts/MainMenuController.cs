@@ -22,7 +22,7 @@ public class MainMenuController : MonoBehaviour
 
     public void OnStartClick()
     {
-        SceneManager.LoadScene("FirstLevel");
+        SceneManager.LoadScene("Tutorial");
     }
 
     public void OnExitClick()

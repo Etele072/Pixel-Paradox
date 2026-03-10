@@ -11,7 +11,7 @@ public class EnemyPatrol : MonoBehaviour
     private Transform targetPoint;
 
     [Header("Érzékelés & Támadás")]
-    public float detectionRange = 6f; 
+    public float detectionRange = 6f;
     public float attackRange = 1.5f;
     public float explosionRadius = 2.5f;
     public LayerMask playerLayer;
@@ -19,17 +19,23 @@ public class EnemyPatrol : MonoBehaviour
     [Header("Beállítások")]
     public Animator animator;
     public Rigidbody2D rb;
+
     private Transform player;
     private bool isAttacking = false;
     private bool isDead = false;
 
+    private Vector3 startPosition;
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null) player = playerObj.transform;
 
         targetPoint = rightPoint;
+
+        startPosition = transform.position;
     }
 
     void Update()
@@ -55,10 +61,12 @@ public class EnemyPatrol : MonoBehaviour
     void Patrol()
     {
         float distance = Vector2.Distance(transform.position, targetPoint.position);
+
         if (distance < 0.2f)
         {
             targetPoint = (targetPoint == rightPoint) ? leftPoint : rightPoint;
         }
+
         Move(targetPoint.position, moveSpeed);
     }
 
@@ -74,29 +82,35 @@ public class EnemyPatrol : MonoBehaviour
 
         rb.linearVelocity = new Vector2(moveDir * speed, rb.linearVelocity.y);
 
-        if (moveDir > 0) transform.localScale = new Vector3(1, 1, 1);
-        else if (moveDir < 0) transform.localScale = new Vector3(-1, 1, 1);
+        if (moveDir > 0)
+            transform.localScale = new Vector3(1, 1, 1);
+        else if (moveDir < 0)
+            transform.localScale = new Vector3(-1, 1, 1);
 
-        if (animator != null) animator.SetFloat("Speed", Mathf.Abs(rb.linearVelocity.x));
+        if (animator != null)
+            animator.SetFloat("Speed", Mathf.Abs(rb.linearVelocity.x));
     }
 
     IEnumerator ExplodeRoutine()
     {
         isAttacking = true;
-        rb.linearVelocity = Vector2.zero; 
+        rb.linearVelocity = Vector2.zero;
 
-        if (animator != null) animator.SetTrigger("AttackTrigger");
+        if (animator != null)
+            animator.SetTrigger("AttackTrigger");
 
         yield return new WaitForSeconds(0.7f);
 
         if (!isDead)
         {
             Collider2D hit = Physics2D.OverlapCircle(transform.position, explosionRadius, playerLayer);
+
             if (hit != null)
             {
                 hit.GetComponent<PlayerMovement>().SendMessage("Die");
             }
-            Destroy(gameObject);
+
+            gameObject.SetActive(false);
         }
     }
 
@@ -124,15 +138,31 @@ public class EnemyPatrol : MonoBehaviour
         playerRb.linearVelocity = new Vector2(playerRb.linearVelocity.x, 12f);
 
         Debug.Log("Enemy kinyírva ráugrással!");
-        Destroy(gameObject);
+
+        gameObject.SetActive(false);
+    }
+
+    public void ResetEnemy()
+    {
+        isDead = false;
+        isAttacking = false;
+
+        transform.position = startPosition;
+        targetPoint = rightPoint;
+
+        StopAllCoroutines();
+
+        gameObject.SetActive(true);
     }
 
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.blue;
         Gizmos.DrawWireSphere(transform.position, detectionRange);
+
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRange);
+
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, explosionRadius);
 

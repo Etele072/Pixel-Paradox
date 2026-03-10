@@ -7,7 +7,9 @@ public class PlayerMovement : MonoBehaviour
 {
     [Header("Health & Checkpoint")]
     private bool isDead = false;
-    private Vector2 checkpointPos; 
+    private Vector2 checkpointPos;
+
+    private EnemyManager enemyManager;
 
     [Header("Components")]
     public Rigidbody2D rb;
@@ -57,6 +59,8 @@ public class PlayerMovement : MonoBehaviour
 
         checkpointPos = transform.position;
 
+        enemyManager = FindObjectOfType<EnemyManager>();
+
         if (playerCollider != null)
         {
             originalSize = playerCollider.size;
@@ -101,9 +105,7 @@ public class PlayerMovement : MonoBehaviour
         rb.constraints = RigidbodyConstraints2D.FreezeAll;
 
         if (playerCollider != null)
-        {
             playerCollider.enabled = false;
-        }
 
         animator.SetBool("isDying", true);
         animator.SetBool("isJumping", false);
@@ -119,14 +121,16 @@ public class PlayerMovement : MonoBehaviour
 
         transform.position = checkpointPos;
 
+        if (enemyManager != null)
+            enemyManager.ResetEnemies();
+
         isDead = false;
+
         rb.constraints = RigidbodyConstraints2D.None;
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
 
         if (playerCollider != null)
-        {
             playerCollider.enabled = true;
-        }
 
         animator.SetBool("isDying", false);
         animator.Play("Movement");
@@ -150,7 +154,6 @@ public class PlayerMovement : MonoBehaviour
             Die();
     }
 
-
     private void ExecuteJump()
     {
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpPower);
@@ -161,6 +164,7 @@ public class PlayerMovement : MonoBehaviour
     public void Jump(InputAction.CallbackContext context)
     {
         if (isDead) return;
+
         if (context.performed)
         {
             jumpBufferCounter = jumpBufferTime;
@@ -220,6 +224,7 @@ public class PlayerMovement : MonoBehaviour
     {
         canDash = false;
         isDashing = true;
+
         animator.SetBool("isDashing", true);
         animator.SetTrigger("DashTrigger");
 
@@ -231,6 +236,7 @@ public class PlayerMovement : MonoBehaviour
 
         rb.gravityScale = originalGravity;
         isDashing = false;
+
         animator.SetBool("isDashing", false);
 
         yield return new WaitForSeconds(dashingCooldown);
@@ -239,8 +245,10 @@ public class PlayerMovement : MonoBehaviour
 
     public void Move(InputAction.CallbackContext context)
     {
-        if (isDead) horizontalMovement = 0;
-        else horizontalMovement = context.ReadValue<Vector2>().x;
+        if (isDead)
+            horizontalMovement = 0;
+        else
+            horizontalMovement = context.ReadValue<Vector2>().x;
     }
 
     private bool isGrounded()
@@ -251,12 +259,16 @@ public class PlayerMovement : MonoBehaviour
     private void StartCrouch()
     {
         if (isCrouching || isDead) return;
+
         isCrouching = true;
         animator.SetBool("isCrouching", true);
 
         float originalBottom = originalOffset.y - originalSize.y / 2f;
+
         playerCollider.size = crouchSize;
+
         float newOffsetY = originalBottom + crouchSize.y / 2f;
+
         playerCollider.offset = new Vector2(originalOffset.x, newOffsetY);
 
         Physics2D.SyncTransforms();
@@ -265,6 +277,7 @@ public class PlayerMovement : MonoBehaviour
     private void StopCrouch()
     {
         if (!isCrouching) return;
+
         isCrouching = false;
         animator.SetBool("isCrouching", false);
 
@@ -283,6 +296,7 @@ public class PlayerMovement : MonoBehaviour
     private void OnDrawGizmosSelected()
     {
         if (groundCheckPos == null) return;
+
         Gizmos.color = Color.white;
         Gizmos.DrawWireCube(groundCheckPos.position, groundCheckSize);
     }
