@@ -20,6 +20,9 @@ public class EnemyPatrol : MonoBehaviour
     public Animator animator;
     public Rigidbody2D rb;
 
+    [Header("Player Bounce")]
+    public float stompBounceForce = 5f;
+
     private Transform player;
     private bool isAttacking = false;
     private bool isDead = false;
@@ -114,6 +117,18 @@ public class EnemyPatrol : MonoBehaviour
         }
     }
 
+    IEnumerator DeathRoutine()
+    {
+        rb.linearVelocity = Vector2.zero;
+
+        if (animator != null)
+            animator.SetTrigger("DeathTrigger");
+
+        yield return new WaitForSeconds(1f);
+
+        gameObject.SetActive(false);
+    }
+
     private void OnCollisionEnter2D(Collision2D collision)
     {
         if (collision.gameObject.CompareTag("Player") && !isDead)
@@ -135,11 +150,11 @@ public class EnemyPatrol : MonoBehaviour
         StopAllCoroutines();
 
         Rigidbody2D playerRb = playerObj.GetComponent<Rigidbody2D>();
-        playerRb.linearVelocity = new Vector2(playerRb.linearVelocity.x, 12f);
+        playerRb.linearVelocity = new Vector2(playerRb.linearVelocity.x, stompBounceForce);
 
         Debug.Log("Enemy kinyírva ráugrással!");
 
-        gameObject.SetActive(false);
+        StartCoroutine(DeathRoutine());
     }
 
     public void ResetEnemy()
