@@ -1,43 +1,60 @@
 using UnityEngine;
 
-public class ParallaxBackground : MonoBehaviour
+public class ParallaxSystem : MonoBehaviour
 {
-    [Header("Beállítások")]
-    public Camera cam;            
-    public float parallaxEffect;    
+    public Transform cam;
 
-    private float length, startPos;
-    private float startY;
+    [System.Serializable]
+    public class Layer
+    {
+        public Transform parent;
+        public float parallaxSpeed;
+    }
+
+    public Layer[] layers;
+
+    float camStartX;
 
     void Start()
     {
-        startPos = transform.position.x;
-        startY = transform.position.y;
-
-        if (GetComponent<SpriteRenderer>() != null)
-        {
-            length = GetComponent<SpriteRenderer>().bounds.size.x;
-        }
-        else
-        {
-            length = GetComponentInChildren<SpriteRenderer>().bounds.size.x;
-        }
+        camStartX = cam.position.x;
     }
 
     void LateUpdate()
     {
-        float temp = (cam.transform.position.x * (1 - parallaxEffect));
-        float dist = (cam.transform.position.x * parallaxEffect);
+        float camDelta = cam.position.x - camStartX;
 
-        Vector3 targetPos = new Vector3(startPos + dist, startY, transform.position.z);
-        transform.position = targetPos;
-        if (temp > startPos + length)
+        foreach (Layer layer in layers)
         {
-            startPos += length;
-        }
-        else if (temp < startPos - length)
-        {
-            startPos -= length;
+            float move = camDelta * layer.parallaxSpeed;
+            layer.parent.position = new Vector3(move, layer.parent.position.y, layer.parent.position.z);
+
+            Transform bg1 = layer.parent.GetChild(0);
+            Transform bg2 = layer.parent.GetChild(1);
+
+            float width = bg1.GetComponent<SpriteRenderer>().bounds.size.x;
+
+            // JOBBRA loop
+            if (cam.position.x - bg1.position.x > width)
+            {
+                bg1.position = new Vector3(bg2.position.x + width, bg1.position.y, bg1.position.z);
+            }
+
+            if (cam.position.x - bg2.position.x > width)
+            {
+                bg2.position = new Vector3(bg1.position.x + width, bg2.position.y, bg2.position.z);
+            }
+
+            // BALRA loop
+            if (cam.position.x - bg1.position.x < -width)
+            {
+                bg1.position = new Vector3(bg2.position.x - width, bg1.position.y, bg1.position.z);
+            }
+
+            if (cam.position.x - bg2.position.x < -width)
+            {
+                bg2.position = new Vector3(bg1.position.x - width, bg2.position.y, bg2.position.z);
+            }
         }
     }
 }
