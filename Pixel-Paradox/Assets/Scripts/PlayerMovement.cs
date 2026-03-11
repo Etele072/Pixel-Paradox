@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
+
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Health & Checkpoint")]
@@ -53,13 +54,18 @@ public class PlayerMovement : MonoBehaviour
     private Vector2 originalOffset;
     private bool isCrouching = false;
 
+    [Header("Ceiling Check")]
+    [SerializeField] private Transform ceilingCheckPos;
+    [SerializeField] private float ceilingCheckRadius = 0.2f;
+    private bool wantsToStandUp = false;
+
     void Start()
     {
         Application.targetFrameRate = 144;
-
         checkpointPos = transform.position;
 
-        enemyManager = FindObjectOfType<EnemyManager>();
+        // Unity 6-os megoldás az elavult FindObject helyett:
+        enemyManager = UnityEngine.Object.FindFirstObjectByType<EnemyManager>();
 
         if (playerCollider != null)
         {
@@ -71,6 +77,8 @@ public class PlayerMovement : MonoBehaviour
     void FixedUpdate()
     {
         if (isDead || isDashing) return;
+
+        CheckIfCanStandUp();
 
         bool grounded = isGrounded();
 
@@ -93,6 +101,19 @@ public class PlayerMovement : MonoBehaviour
         UpdateAnimations(grounded);
     }
 
+    private void CheckIfCanStandUp()
+    {
+        if (wantsToStandUp && isCrouching)
+        {
+            bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
+            if (!ceilingAbove)
+            {
+                StopCrouch();
+                wantsToStandUp = false;
+            }
+        }
+    }
+
     private void Die()
     {
         if (isDead) return;
@@ -101,7 +122,6 @@ public class PlayerMovement : MonoBehaviour
         horizontalMovement = 0;
         rb.linearVelocity = Vector2.zero;
         rb.angularVelocity = 0f;
-
         rb.constraints = RigidbodyConstraints2D.FreezeAll;
 
         if (playerCollider != null)
@@ -118,14 +138,12 @@ public class PlayerMovement : MonoBehaviour
     private IEnumerator DeathDelay()
     {
         yield return new WaitForSecondsRealtime(0.8f);
-
         transform.position = checkpointPos;
 
         if (enemyManager != null)
             enemyManager.ResetEnemies();
 
         isDead = false;
-
         rb.constraints = RigidbodyConstraints2D.None;
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
 
@@ -168,7 +186,11 @@ public class PlayerMovement : MonoBehaviour
         if (context.performed)
         {
             jumpBufferCounter = jumpBufferTime;
-            if (isCrouching) StopCrouch();
+            if (isCrouching)
+            {
+                bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
+                if (!ceilingAbove) StopCrouch();
+            }
         }
 
         if (context.canceled && rb.linearVelocity.y > 0)
@@ -236,7 +258,6 @@ public class PlayerMovement : MonoBehaviour
 
         rb.gravityScale = originalGravity;
         isDashing = false;
-
         animator.SetBool("isDashing", false);
 
         yield return new WaitForSeconds(dashingCooldown);
@@ -264,11 +285,8 @@ public class PlayerMovement : MonoBehaviour
         animator.SetBool("isCrouching", true);
 
         float originalBottom = originalOffset.y - originalSize.y / 2f;
-
         playerCollider.size = crouchSize;
-
         float newOffsetY = originalBottom + crouchSize.y / 2f;
-
         playerCollider.offset = new Vector2(originalOffset.x, newOffsetY);
 
         Physics2D.SyncTransforms();
@@ -280,7 +298,6 @@ public class PlayerMovement : MonoBehaviour
 
         isCrouching = false;
         animator.SetBool("isCrouching", false);
-
         playerCollider.size = originalSize;
         playerCollider.offset = originalOffset;
     }
@@ -288,9 +305,14 @@ public class PlayerMovement : MonoBehaviour
     public void Crouch(InputAction.CallbackContext context)
     {
         if (context.performed)
+        {
+            wantsToStandUp = false;
             StartCrouch();
+        }
         else if (context.canceled)
-            StopCrouch();
+        {
+            wantsToStandUp = true;
+        }
     }
 
     private void OnDrawGizmosSelected()
@@ -299,5 +321,11 @@ public class PlayerMovement : MonoBehaviour
 
         Gizmos.color = Color.white;
         Gizmos.DrawWireCube(groundCheckPos.position, groundCheckSize);
+
+        if (ceilingCheckPos != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(ceilingCheckPos.position, ceilingCheckRadius);
+        }
     }
 }
