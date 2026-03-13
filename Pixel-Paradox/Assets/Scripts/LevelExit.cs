@@ -12,7 +12,7 @@ public class LevelExit : MonoBehaviour
 
     void Start()
     {
-        playerInput = FindObjectOfType<PlayerInput>();
+        playerInput = UnityEngine.Object.FindFirstObjectByType<PlayerInput>();
         interactAction = playerInput.actions["Interact"];
     }
 

@@ -1,4 +1,6 @@
+using System.Collections;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class EnemyManager : MonoBehaviour
 {
@@ -6,7 +8,7 @@ public class EnemyManager : MonoBehaviour
 
     void Start()
     {
-        enemies = FindObjectsOfType<EnemyPatrol>();
+        enemies = FindObjectsByType<EnemyPatrol>(FindObjectsSortMode.None);
     }
 
     public void ResetEnemies()

@@ -1,25 +1,28 @@
 ﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
-
 
 public class PlayerMovement : MonoBehaviour
 {
+    #region Variables: Components & Settings
+    [Header("Components")]
+    public Rigidbody2D rb;
+    public Animator animator;
+    [SerializeField] private CapsuleCollider2D playerCollider;
+    private EnemyManager enemyManager;
+
     [Header("Health & Checkpoint")]
     private bool isDead = false;
     private Vector2 checkpointPos;
 
-    private EnemyManager enemyManager;
-
-    [Header("Components")]
-    public Rigidbody2D rb;
-    public Animator animator;
-    [SerializeField] private BoxCollider2D playerCollider;
-
     [Header("Movement")]
     public float moveSpeed = 5f;
-    float horizontalMovement;
+    private float horizontalMovement;
+
+    [Header("Slope Handling")]
+    [SerializeField] private float slopeCheckDistance = 0.5f;
+    private Vector2 slopeNormalPerp;
+    private bool isOnSlope;
 
     [Header("Dashing")]
     public bool canDash = true;
@@ -35,17 +38,7 @@ public class PlayerMovement : MonoBehaviour
     public float jumpBufferTime = 0.2f;
     private float jumpBufferCounter;
 
-    [Header("GroundCheck")]
-    public Transform groundCheckPos;
-    public Vector2 groundCheckSize = new Vector2(0.5f, 0.05f);
-    public LayerMask groundLayer;
-
-    [Header("Gravity")]
-    public float baseGravity = 2f;
-    public float maxFallSpeed = 18f;
-    public float fallSpeedMultiplier = 2f;
-
-    [Header("Crouch & Crawl Settings")]
+    [Header("Crouch & Crawl")]
     public float crouchSpeed = 2.5f;
     public float crawlSpeed = 1.5f;
     [SerializeField] private Vector2 crouchSize = new Vector2(1f, 0.8f);
@@ -53,18 +46,26 @@ public class PlayerMovement : MonoBehaviour
     private Vector2 originalSize;
     private Vector2 originalOffset;
     private bool isCrouching = false;
-
-    [Header("Ceiling Check")]
-    [SerializeField] private Transform ceilingCheckPos;
-    [SerializeField] private float ceilingCheckRadius = 0.2f;
     private bool wantsToStandUp = false;
 
+    [Header("Physics Checks")]
+    public Transform groundCheckPos;
+    public Vector2 groundCheckSize = new Vector2(0.5f, 0.05f);
+    [SerializeField] private Transform ceilingCheckPos;
+    [SerializeField] private float ceilingCheckRadius = 0.2f;
+    public LayerMask groundLayer;
+
+    [Header("Gravity")]
+    public float baseGravity = 2f;
+    public float maxFallSpeed = 18f;
+    public float fallSpeedMultiplier = 2f;
+    #endregion
+
+    #region Unity Callbacks
     void Start()
     {
         Application.targetFrameRate = 144;
         checkpointPos = transform.position;
-
-        // Unity 6-os megoldás az elavult FindObject helyett:
         enemyManager = UnityEngine.Object.FindFirstObjectByType<EnemyManager>();
 
         if (playerCollider != null)
@@ -79,9 +80,11 @@ public class PlayerMovement : MonoBehaviour
         if (isDead || isDashing) return;
 
         CheckIfCanStandUp();
+        CheckSlope(); // ÚJ: Lejtő ellenőrzése
 
         bool grounded = isGrounded();
 
+        // Coyote & Buffer management
         if (grounded)
             coyoteTimeCounter = coyoteTime;
         else
@@ -93,83 +96,43 @@ public class PlayerMovement : MonoBehaviour
         if (jumpBufferCounter > 0f && coyoteTimeCounter > 0f)
             ExecuteJump();
 
-        float speed = isCrouching ? crawlSpeed : moveSpeed;
-        rb.linearVelocity = new Vector2(horizontalMovement * speed, rb.linearVelocity.y);
-
+        ApplyMovement(grounded);
         Gravity();
         Flip();
         UpdateAnimations(grounded);
     }
+    #endregion
 
-    private void CheckIfCanStandUp()
+    #region Movement Core Logic
+    private void CheckSlope()
     {
-        if (wantsToStandUp && isCrouching)
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, slopeCheckDistance, groundLayer);
+
+        if (hit)
         {
-            bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
-            if (!ceilingAbove)
-            {
-                StopCrouch();
-                wantsToStandUp = false;
-            }
+            slopeNormalPerp = Vector2.Perpendicular(hit.normal).normalized;
+            isOnSlope = hit.normal != Vector2.up;
+
+            Debug.DrawRay(hit.point, slopeNormalPerp, Color.blue);
+        }
+        else
+        {
+            isOnSlope = false;
         }
     }
 
-    private void Die()
+    private void ApplyMovement(bool grounded)
     {
-        if (isDead) return;
-        isDead = true;
+        float speed = isCrouching ? crawlSpeed : moveSpeed;
 
-        horizontalMovement = 0;
-        rb.linearVelocity = Vector2.zero;
-        rb.angularVelocity = 0f;
-        rb.constraints = RigidbodyConstraints2D.FreezeAll;
-
-        if (playerCollider != null)
-            playerCollider.enabled = false;
-
-        animator.SetBool("isDying", true);
-        animator.SetBool("isJumping", false);
-        animator.SetBool("isCrouching", false);
-        animator.SetFloat("xVelocity", 0f);
-
-        StartCoroutine(DeathDelay());
-    }
-
-    private IEnumerator DeathDelay()
-    {
-        yield return new WaitForSecondsRealtime(0.8f);
-        transform.position = checkpointPos;
-
-        if (enemyManager != null)
-            enemyManager.ResetEnemies();
-
-        isDead = false;
-        rb.constraints = RigidbodyConstraints2D.None;
-        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-
-        if (playerCollider != null)
-            playerCollider.enabled = true;
-
-        animator.SetBool("isDying", false);
-        animator.Play("Movement");
-    }
-
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        if (collision.CompareTag("Spike"))
-            Die();
-
-        if (collision.CompareTag("Checkpoint"))
+        if (grounded && isOnSlope && !isDashing)
         {
-            checkpointPos = collision.transform.position;
-            Debug.Log("Checkpoint mentve: " + checkpointPos);
+            rb.linearVelocity = new Vector2(speed * -horizontalMovement * slopeNormalPerp.x, speed * -horizontalMovement * slopeNormalPerp.y);
         }
-    }
-
-    private void OnCollisionEnter2D(Collision2D collision)
-    {
-        if (collision.gameObject.CompareTag("Spike"))
-            Die();
+        else
+        {
+            rb.linearVelocity = new Vector2(horizontalMovement * speed, rb.linearVelocity.y);
+        }
     }
 
     private void ExecuteJump()
@@ -179,30 +142,14 @@ public class PlayerMovement : MonoBehaviour
         coyoteTimeCounter = 0f;
     }
 
-    public void Jump(InputAction.CallbackContext context)
-    {
-        if (isDead) return;
-
-        if (context.performed)
-        {
-            jumpBufferCounter = jumpBufferTime;
-            if (isCrouching)
-            {
-                bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
-                if (!ceilingAbove) StopCrouch();
-            }
-        }
-
-        if (context.canceled && rb.linearVelocity.y > 0)
-        {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * 0.5f);
-            coyoteTimeCounter = 0f;
-        }
-    }
-
     private void Gravity()
     {
-        if (rb.linearVelocity.y < 0)
+        if (isOnSlope && horizontalMovement == 0 && isGrounded())
+        {
+            rb.gravityScale = 0f;
+            rb.linearVelocity = new Vector2(0, 0);
+        }
+        else if (rb.linearVelocity.y < 0)
         {
             rb.gravityScale = baseGravity * fallSpeedMultiplier;
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, Mathf.Max(rb.linearVelocity.y, -maxFallSpeed));
@@ -212,41 +159,68 @@ public class PlayerMovement : MonoBehaviour
             rb.gravityScale = baseGravity;
         }
     }
+    #endregion
 
-    private void UpdateAnimations(bool grounded)
+    #region Input Handlers
+    public void Move(InputAction.CallbackContext context)
     {
-        if (isDashing || isDead) return;
-
-        animator.SetBool("isJumping", !grounded);
-        animator.SetBool("isCrouching", isCrouching);
-        animator.SetFloat("xVelocity", Mathf.Abs(horizontalMovement));
-
-        if (!grounded)
-        {
-            float yVel = rb.linearVelocity.y;
-            animator.SetFloat("yVelocity", (yVel < 3f && yVel > -3f) ? 0f : yVel);
-        }
+        horizontalMovement = isDead ? 0 : context.ReadValue<Vector2>().x;
     }
 
-    private void Flip()
+    public void Jump(InputAction.CallbackContext context)
     {
-        if (horizontalMovement > 0)
-            transform.localScale = new Vector3(1, 1, 1);
-        else if (horizontalMovement < 0)
-            transform.localScale = new Vector3(-1, 1, 1);
+        if (isDead) return;
+
+        bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
+        if (ceilingAbove) return;
+
+        if (context.performed)
+        {
+            jumpBufferCounter = jumpBufferTime;
+        }
+
+        if (context.canceled && rb.linearVelocity.y > 0)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * 0.5f);
+            coyoteTimeCounter = 0f;
+        }
     }
 
     public void Dash(InputAction.CallbackContext context)
     {
-        if (!isDead && context.performed && canDash)
+        bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
+        if (!isDead && context.performed && canDash && !ceilingAbove)
             StartCoroutine(DashCoroutine());
     }
 
+    public void Crouch(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            wantsToStandUp = false;
+            StartCrouch();
+        }
+        else if (context.canceled)
+        {
+            bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
+            if (!ceilingAbove)
+            {
+                StopCrouch();
+                wantsToStandUp = false;
+            }
+            else
+            {
+                wantsToStandUp = true;
+            }
+        }
+    }
+    #endregion
+
+    #region Helper Methods (Dash, Flip, Crouch, Health)
     private IEnumerator DashCoroutine()
     {
         canDash = false;
         isDashing = true;
-
         animator.SetBool("isDashing", true);
         animator.SetTrigger("DashTrigger");
 
@@ -264,68 +238,103 @@ public class PlayerMovement : MonoBehaviour
         canDash = true;
     }
 
-    public void Move(InputAction.CallbackContext context)
+    private void Flip()
     {
-        if (isDead)
-            horizontalMovement = 0;
-        else
-            horizontalMovement = context.ReadValue<Vector2>().x;
-    }
-
-    private bool isGrounded()
-    {
-        return Physics2D.OverlapBox(groundCheckPos.position, groundCheckSize, 0, groundLayer);
+        if (horizontalMovement > 0) transform.localScale = Vector3.one;
+        else if (horizontalMovement < 0) transform.localScale = new Vector3(-1, 1, 1);
     }
 
     private void StartCrouch()
     {
         if (isCrouching || isDead) return;
-
         isCrouching = true;
         animator.SetBool("isCrouching", true);
-
         float originalBottom = originalOffset.y - originalSize.y / 2f;
         playerCollider.size = crouchSize;
-        float newOffsetY = originalBottom + crouchSize.y / 2f;
-        playerCollider.offset = new Vector2(originalOffset.x, newOffsetY);
-
+        playerCollider.offset = new Vector2(originalOffset.x, originalBottom + crouchSize.y / 2f);
         Physics2D.SyncTransforms();
     }
 
     private void StopCrouch()
     {
         if (!isCrouching) return;
-
         isCrouching = false;
         animator.SetBool("isCrouching", false);
         playerCollider.size = originalSize;
         playerCollider.offset = originalOffset;
     }
 
-    public void Crouch(InputAction.CallbackContext context)
+    private void CheckIfCanStandUp()
     {
-        if (context.performed)
+        if (wantsToStandUp && isCrouching)
         {
-            wantsToStandUp = false;
-            StartCrouch();
-        }
-        else if (context.canceled)
-        {
-            wantsToStandUp = true;
+            bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
+            if (!ceilingAbove) { StopCrouch(); wantsToStandUp = false; }
         }
     }
+
+    private void Die()
+    {
+        if (isDead) return;
+        isDead = true;
+        horizontalMovement = 0;
+        rb.linearVelocity = Vector2.zero;
+        rb.constraints = RigidbodyConstraints2D.FreezeAll;
+        if (playerCollider != null) playerCollider.enabled = false;
+        animator.SetBool("isDying", true);
+        StartCoroutine(DeathDelay());
+    }
+
+    private IEnumerator DeathDelay()
+    {
+        yield return new WaitForSecondsRealtime(0.8f);
+        transform.position = checkpointPos;
+        if (enemyManager != null) enemyManager.ResetEnemies();
+        isDead = false;
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+        if (playerCollider != null) playerCollider.enabled = true;
+        animator.SetBool("isDying", false);
+        animator.Play("Movement");
+    }
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.CompareTag("Spike")) Die();
+        if (collision.CompareTag("Checkpoint")) checkpointPos = collision.transform.position;
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.CompareTag("Spike")) Die();
+    }
+
+    private void UpdateAnimations(bool grounded)
+    {
+        if (isDashing || isDead) return;
+        animator.SetBool("isJumping", !grounded);
+        animator.SetBool("isCrouching", isCrouching);
+        animator.SetFloat("xVelocity", Mathf.Abs(horizontalMovement));
+        if (!grounded)
+        {
+            float yVel = rb.linearVelocity.y;
+            animator.SetFloat("yVelocity", (yVel < 3f && yVel > -3f) ? 0f : yVel);
+        }
+    }
+
+    private bool isGrounded() => Physics2D.OverlapBox(groundCheckPos.position, groundCheckSize, 0, groundLayer);
 
     private void OnDrawGizmosSelected()
     {
         if (groundCheckPos == null) return;
-
         Gizmos.color = Color.white;
         Gizmos.DrawWireCube(groundCheckPos.position, groundCheckSize);
-
         if (ceilingCheckPos != null)
         {
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(ceilingCheckPos.position, ceilingCheckRadius);
         }
+        Gizmos.color = Color.blue;
+        Gizmos.DrawLine(transform.position, transform.position + Vector3.down * slopeCheckDistance);
     }
+    #endregion
 }
