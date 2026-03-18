@@ -2,8 +2,12 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+
+
 public class PlayerMovement : MonoBehaviour
 {
+    public SoundManager soundManager;
+
     #region Variables: Components & Settings
     [Header("Components")]
     public Rigidbody2D rb;
@@ -133,6 +137,7 @@ public class PlayerMovement : MonoBehaviour
         {
             rb.linearVelocity = new Vector2(horizontalMovement * speed, rb.linearVelocity.y);
         }
+
     }
 
     private void ExecuteJump()
@@ -219,6 +224,8 @@ public class PlayerMovement : MonoBehaviour
     #region Helper Methods (Dash, Flip, Crouch, Health)
     private IEnumerator DashCoroutine()
     {
+        SoundManager.Instance.PlaySound2D("Dash");
+
         canDash = false;
         isDashing = true;
         animator.SetBool("isDashing", true);
