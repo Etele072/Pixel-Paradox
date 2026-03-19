@@ -9,6 +9,10 @@ public class PlayerMovement : MonoBehaviour
     public SoundManager soundManager;
 
     #region Variables: Components & Settings
+
+    [Header("Inventory")]
+    public bool hasCard = false;
+
     [Header("Components")]
     public Rigidbody2D rb;
     public Animator animator;
@@ -88,7 +92,6 @@ public class PlayerMovement : MonoBehaviour
 
         bool grounded = isGrounded();
 
-        // Coyote & Buffer management
         if (grounded)
             coyoteTimeCounter = coyoteTime;
         else
@@ -149,10 +152,10 @@ public class PlayerMovement : MonoBehaviour
 
     private void Gravity()
     {
-        if (isOnSlope && horizontalMovement == 0 && isGrounded())
+        if (isOnSlope && horizontalMovement == 0 && isGrounded() && rb.linearVelocity.y <= 0.1f)
         {
             rb.gravityScale = 0f;
-            rb.linearVelocity = new Vector2(0, 0);
+            rb.linearVelocity = Vector2.zero;
         }
         else if (rb.linearVelocity.y < 0)
         {
@@ -193,9 +196,16 @@ public class PlayerMovement : MonoBehaviour
 
     public void Dash(InputAction.CallbackContext context)
     {
+        if (isDead || !context.performed || !canDash) return;
+
         bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
-        if (!isDead && context.performed && canDash && !ceilingAbove)
-            StartCoroutine(DashCoroutine());
+
+        if (isGrounded() && ceilingAbove)
+        {
+            return; 
+        }
+
+        StartCoroutine(DashCoroutine());
     }
 
     public void Crouch(InputAction.CallbackContext context)
@@ -311,7 +321,15 @@ public class PlayerMovement : MonoBehaviour
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.CompareTag("Spike")) Die();
+
         if (collision.CompareTag("Checkpoint")) checkpointPos = collision.transform.position;
+
+        if (collision.CompareTag("Card"))
+        {
+            hasCard = true;
+            Debug.Log("Kártya felvéve: " + collision.gameObject.name);
+            Destroy(collision.gameObject);
+        }
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
