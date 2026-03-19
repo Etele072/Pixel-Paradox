@@ -2,8 +2,12 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+
+
 public class PlayerMovement : MonoBehaviour
 {
+    public SoundManager soundManager;
+
     #region Variables: Components & Settings
     [Header("Components")]
     public Rigidbody2D rb;
@@ -80,7 +84,7 @@ public class PlayerMovement : MonoBehaviour
         if (isDead || isDashing) return;
 
         CheckIfCanStandUp();
-        CheckSlope(); // ÚJ: Lejtő ellenőrzése
+        CheckSlope();
 
         bool grounded = isGrounded();
 
@@ -133,6 +137,7 @@ public class PlayerMovement : MonoBehaviour
         {
             rb.linearVelocity = new Vector2(horizontalMovement * speed, rb.linearVelocity.y);
         }
+
     }
 
     private void ExecuteJump()
@@ -219,6 +224,8 @@ public class PlayerMovement : MonoBehaviour
     #region Helper Methods (Dash, Flip, Crouch, Health)
     private IEnumerator DashCoroutine()
     {
+        SoundManager.Instance.PlaySound2D("Dash");
+
         canDash = false;
         isDashing = true;
         animator.SetBool("isDashing", true);
@@ -279,9 +286,13 @@ public class PlayerMovement : MonoBehaviour
         isDead = true;
         horizontalMovement = 0;
         rb.linearVelocity = Vector2.zero;
+        rb.gravityScale = 0f;
         rb.constraints = RigidbodyConstraints2D.FreezeAll;
         if (playerCollider != null) playerCollider.enabled = false;
-        animator.SetBool("isDying", true);
+        animator.SetBool("isJumping", false);       
+        animator.SetFloat("xVelocity", 0f);
+        animator.SetFloat("yVelocity", 0f);
+        animator.SetTrigger("dieTrigger");
         StartCoroutine(DeathDelay());
     }
 
@@ -291,9 +302,9 @@ public class PlayerMovement : MonoBehaviour
         transform.position = checkpointPos;
         if (enemyManager != null) enemyManager.ResetEnemies();
         isDead = false;
+        rb.gravityScale = baseGravity;              
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
         if (playerCollider != null) playerCollider.enabled = true;
-        animator.SetBool("isDying", false);
         animator.Play("Movement");
     }
 
