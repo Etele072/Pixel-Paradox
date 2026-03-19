@@ -1,6 +1,6 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 public class LevelExit : MonoBehaviour
 {
@@ -10,17 +10,34 @@ public class LevelExit : MonoBehaviour
     private PlayerInput playerInput;
     private InputAction interactAction;
 
+    private PlayerMovement playerScript;
+
     void Start()
     {
-        playerInput = UnityEngine.Object.FindFirstObjectByType<PlayerInput>();
-        interactAction = playerInput.actions["Interact"];
+        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+        if (playerObj != null)
+        {
+            playerInput = playerObj.GetComponent<PlayerInput>();
+            playerScript = playerObj.GetComponent<PlayerMovement>();
+
+            if (playerInput != null)
+                interactAction = playerInput.actions["Interact"];
+        }
     }
 
     void Update()
     {
-        if (playerInside && interactAction.WasPressedThisFrame())
+        if (playerInside && interactAction != null && interactAction.WasPressedThisFrame())
         {
-            SceneManager.LoadScene(nextLevelName);
+            if (playerScript != null && playerScript.hasCard)
+            {
+                Debug.Log("Sikeres kijutás kártyával!");
+                SceneManager.LoadScene(nextLevelName);
+            }
+            else
+            {
+                Debug.Log("Nincs nálad a kártya, nem mehetsz át!");
+            }
         }
     }
 
