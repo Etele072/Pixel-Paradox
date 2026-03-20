@@ -290,7 +290,7 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    private void Die()
+    public void Die()
     {
         if (isDead) return;
         isDead = true;
