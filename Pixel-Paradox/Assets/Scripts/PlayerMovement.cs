@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.UI; 
+using UnityEngine.UI;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -11,7 +11,7 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Inventory & UI")]
     public bool hasCard = false;
-    public GameObject cardIconUI; 
+    public GameObject cardIconUI;
 
     [Header("Components")]
     public Rigidbody2D rb;
@@ -98,16 +98,14 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
-
         if (hasCard && cardIconUI != null)
         {
-           float pulse = 1.1f + Mathf.Sin(Time.time * 5f) * 0.1f;
-           cardIconUI.transform.localScale = new Vector3(pulse, pulse, 1f);
+            float pulse = 1.1f + Mathf.Sin(Time.time * 5f) * 0.1f;
+            cardIconUI.transform.localScale = new Vector3(pulse, pulse, 1f);
 
-           float tilt = Mathf.Sin(Time.time * 2f) * 5f;
-           cardIconUI.transform.localRotation = Quaternion.Euler(0, 0, tilt);
+            float tilt = Mathf.Sin(Time.time * 2f) * 5f;
+            cardIconUI.transform.localRotation = Quaternion.Euler(0, 0, tilt);
         }
-
 
         if (isDead || isDashing)
         {
@@ -158,8 +156,6 @@ public class PlayerMovement : MonoBehaviour
         {
             slopeNormalPerp = Vector2.Perpendicular(hit.normal).normalized;
             isOnSlope = hit.normal != Vector2.up;
-
-            Debug.DrawRay(hit.point, slopeNormalPerp, Color.blue);
         }
         else
         {
@@ -217,8 +213,12 @@ public class PlayerMovement : MonoBehaviour
     {
         if (isDead) return;
 
-        bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
-        if (ceilingAbove) return;
+        // Csak akkor nézzük a plafont, ha guggolunk, különben fal mellett nem enged ugrani
+        if (isCrouching && ceilingCheckPos != null)
+        {
+            bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
+            if (ceilingAbove) return;
+        }
 
         if (context.performed)
         {
@@ -236,11 +236,11 @@ public class PlayerMovement : MonoBehaviour
     {
         if (isDead || !context.performed || !canDash) return;
 
-        bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
-
-        if (isGrounded() && ceilingAbove)
+        // Csak akkor nézzük a plafont dashelés előtt, ha guggolunk
+        if (isCrouching && ceilingCheckPos != null)
         {
-            return;
+            bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
+            if (ceilingAbove) return;
         }
 
         StartCoroutine(DashCoroutine());
@@ -255,7 +255,12 @@ public class PlayerMovement : MonoBehaviour
         }
         else if (context.canceled)
         {
-            bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
+            bool ceilingAbove = false;
+            if (ceilingCheckPos != null)
+            {
+                ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
+            }
+
             if (!ceilingAbove)
             {
                 StopCrouch();
@@ -272,12 +277,10 @@ public class PlayerMovement : MonoBehaviour
     #region Helper Methods (Dash, Flip, Crouch, Health)
     private IEnumerator DashCoroutine()
     {
-
+        if (SoundManager.Instance != null)
+        {
             SoundManager.Instance.PlaySound2D("Dash");
-
-
-
-        canDash = false;
+        }
 
         canDash = false;
         isDashing = true;
@@ -326,7 +329,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void CheckIfCanStandUp()
     {
-        if (wantsToStandUp && isCrouching)
+        if (wantsToStandUp && isCrouching && ceilingCheckPos != null)
         {
             bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
             if (!ceilingAbove) { StopCrouch(); wantsToStandUp = false; }
@@ -342,10 +345,12 @@ public class PlayerMovement : MonoBehaviour
         rb.gravityScale = 0f;
         rb.constraints = RigidbodyConstraints2D.FreezeAll;
         if (playerCollider != null) playerCollider.enabled = false;
+
         animator.SetBool("isJumping", false);
         animator.SetFloat("xVelocity", 0f);
         animator.SetFloat("yVelocity", 0f);
         animator.SetTrigger("dieTrigger");
+
         StartCoroutine(DeathDelay());
     }
 
@@ -354,6 +359,7 @@ public class PlayerMovement : MonoBehaviour
         yield return new WaitForSecondsRealtime(0.8f);
         transform.position = checkpointPos;
         if (enemyManager != null) enemyManager.ResetEnemies();
+
         isDead = false;
         rb.gravityScale = baseGravity;
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
@@ -371,7 +377,6 @@ public class PlayerMovement : MonoBehaviour
         {
             hasCard = true;
             if (cardIconUI != null) cardIconUI.SetActive(true);
-            Debug.Log("Card aquired: " + collision.gameObject.name);
             Destroy(collision.gameObject);
         }
     }
@@ -394,7 +399,7 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    private bool isGrounded() => Physics2D.OverlapBox(groundCheckPos.position, groundCheckSize, 0, groundLayer);
+    private bool isGrounded() => groundCheckPos != null && Physics2D.OverlapBox(groundCheckPos.position, groundCheckSize, 0, groundLayer);
 
     private void OnDrawGizmosSelected()
     {
@@ -406,8 +411,6 @@ public class PlayerMovement : MonoBehaviour
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(ceilingCheckPos.position, ceilingCheckRadius);
         }
-        Gizmos.color = Color.blue;
-        Gizmos.DrawLine(transform.position, transform.position + Vector3.down * slopeCheckDistance);
     }
     #endregion
 }
