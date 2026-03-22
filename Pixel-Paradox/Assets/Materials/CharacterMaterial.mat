@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: PlayerMat
+  m_Name: CharacterMaterial
   m_Shader: {fileID: 4800000, guid: c77b26ce6dff5f54ea8fca7f7c12c33e, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -29,8 +29,9 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - PixelSnap: 0
     - _OutlineEnabled: 0
-    - _OutlineWidth: 1
+    - _OutlineWidth: 0.4
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _OutlineColor: {r: 0, g: 1, b: 1, a: 1}

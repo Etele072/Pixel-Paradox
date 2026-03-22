@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI; 
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -8,16 +9,17 @@ public class PlayerMovement : MonoBehaviour
 
     #region Variables: Components & Settings
 
-    [Header("Inventory")]
+    [Header("Inventory & UI")]
     public bool hasCard = false;
+    public GameObject cardIconUI; 
 
     [Header("Components")]
     public Rigidbody2D rb;
     public Animator animator;
     [SerializeField] private CapsuleCollider2D playerCollider;
     private EnemyManager enemyManager;
-    private SpriteRenderer spriteRenderer; // [MODOSITAS] Kell a material eléréséhez
-    private Material charMaterial;        // [MODOSITAS] Ebben tároljuk a shader hivatkozást
+    private SpriteRenderer spriteRenderer;
+    private Material charMaterial;
 
     [Header("Health & Checkpoint")]
     private bool isDead = false;
@@ -76,7 +78,6 @@ public class PlayerMovement : MonoBehaviour
         checkpointPos = transform.position;
         enemyManager = UnityEngine.Object.FindFirstObjectByType<EnemyManager>();
 
-        // [MODOSITAS] Material inicializálása
         spriteRenderer = GetComponent<SpriteRenderer>();
         if (spriteRenderer != null)
         {
@@ -88,13 +89,29 @@ public class PlayerMovement : MonoBehaviour
             originalSize = playerCollider.size;
             originalOffset = playerCollider.offset;
         }
+
+        if (cardIconUI != null && !hasCard)
+        {
+            cardIconUI.SetActive(false);
+        }
     }
 
     void FixedUpdate()
     {
+
+        if (hasCard && cardIconUI != null)
+        {
+           float pulse = 1.1f + Mathf.Sin(Time.time * 5f) * 0.1f;
+           cardIconUI.transform.localScale = new Vector3(pulse, pulse, 1f);
+
+           float tilt = Mathf.Sin(Time.time * 2f) * 5f;
+           cardIconUI.transform.localRotation = Quaternion.Euler(0, 0, tilt);
+        }
+
+
         if (isDead || isDashing)
         {
-            UpdateDashIndicator(); // [MODOSITAS] Holtan/Dash közben is frissítjük a látványt (kikapcsoljuk)
+            UpdateDashIndicator();
             return;
         }
 
@@ -118,18 +135,16 @@ public class PlayerMovement : MonoBehaviour
         Gravity();
         Flip();
         UpdateAnimations(grounded);
-        UpdateDashIndicator(); // [MODOSITAS] Itt kapcsoljuk vissza, ha lejárt a cooldown
+        UpdateDashIndicator();
     }
     #endregion
 
     #region Movement Core Logic
 
-    // [MODOSITAS] Új metódus a shader vezérléséhez
     private void UpdateDashIndicator()
     {
         if (charMaterial != null)
         {
-            // Csak akkor világítson, ha élünk, nem dash-elünk éppen ÉS a canDash true
             float status = (!isDead && canDash && !isDashing) ? 1.0f : 0.0f;
             charMaterial.SetFloat("_OutlineEnabled", status);
         }
@@ -257,7 +272,12 @@ public class PlayerMovement : MonoBehaviour
     #region Helper Methods (Dash, Flip, Crouch, Health)
     private IEnumerator DashCoroutine()
     {
-        SoundManager.Instance.PlaySound2D("Dash");
+
+            SoundManager.Instance.PlaySound2D("Dash");
+
+
+
+        canDash = false;
 
         canDash = false;
         isDashing = true;
@@ -350,7 +370,8 @@ public class PlayerMovement : MonoBehaviour
         if (collision.CompareTag("Card"))
         {
             hasCard = true;
-            Debug.Log("Kártya felvéve: " + collision.gameObject.name);
+            if (cardIconUI != null) cardIconUI.SetActive(true);
+            Debug.Log("Card aquired: " + collision.gameObject.name);
             Destroy(collision.gameObject);
         }
     }
