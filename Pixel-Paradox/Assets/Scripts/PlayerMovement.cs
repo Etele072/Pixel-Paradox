@@ -2,8 +2,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-
-
 public class PlayerMovement : MonoBehaviour
 {
     public SoundManager soundManager;
@@ -18,6 +16,8 @@ public class PlayerMovement : MonoBehaviour
     public Animator animator;
     [SerializeField] private CapsuleCollider2D playerCollider;
     private EnemyManager enemyManager;
+    private SpriteRenderer spriteRenderer; // [MODOSITAS] Kell a material eléréséhez
+    private Material charMaterial;        // [MODOSITAS] Ebben tároljuk a shader hivatkozást
 
     [Header("Health & Checkpoint")]
     private bool isDead = false;
@@ -76,6 +76,13 @@ public class PlayerMovement : MonoBehaviour
         checkpointPos = transform.position;
         enemyManager = UnityEngine.Object.FindFirstObjectByType<EnemyManager>();
 
+        // [MODOSITAS] Material inicializálása
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer != null)
+        {
+            charMaterial = spriteRenderer.material;
+        }
+
         if (playerCollider != null)
         {
             originalSize = playerCollider.size;
@@ -85,7 +92,11 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (isDead || isDashing) return;
+        if (isDead || isDashing)
+        {
+            UpdateDashIndicator(); // [MODOSITAS] Holtan/Dash közben is frissítjük a látványt (kikapcsoljuk)
+            return;
+        }
 
         CheckIfCanStandUp();
         CheckSlope();
@@ -107,10 +118,23 @@ public class PlayerMovement : MonoBehaviour
         Gravity();
         Flip();
         UpdateAnimations(grounded);
+        UpdateDashIndicator(); // [MODOSITAS] Itt kapcsoljuk vissza, ha lejárt a cooldown
     }
     #endregion
 
     #region Movement Core Logic
+
+    // [MODOSITAS] Új metódus a shader vezérléséhez
+    private void UpdateDashIndicator()
+    {
+        if (charMaterial != null)
+        {
+            // Csak akkor világítson, ha élünk, nem dash-elünk éppen ÉS a canDash true
+            float status = (!isDead && canDash && !isDashing) ? 1.0f : 0.0f;
+            charMaterial.SetFloat("_OutlineEnabled", status);
+        }
+    }
+
     private void CheckSlope()
     {
         RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, slopeCheckDistance, groundLayer);
@@ -140,7 +164,6 @@ public class PlayerMovement : MonoBehaviour
         {
             rb.linearVelocity = new Vector2(horizontalMovement * speed, rb.linearVelocity.y);
         }
-
     }
 
     private void ExecuteJump()
@@ -202,7 +225,7 @@ public class PlayerMovement : MonoBehaviour
 
         if (isGrounded() && ceilingAbove)
         {
-            return; 
+            return;
         }
 
         StartCoroutine(DashCoroutine());
@@ -299,7 +322,7 @@ public class PlayerMovement : MonoBehaviour
         rb.gravityScale = 0f;
         rb.constraints = RigidbodyConstraints2D.FreezeAll;
         if (playerCollider != null) playerCollider.enabled = false;
-        animator.SetBool("isJumping", false);       
+        animator.SetBool("isJumping", false);
         animator.SetFloat("xVelocity", 0f);
         animator.SetFloat("yVelocity", 0f);
         animator.SetTrigger("dieTrigger");
@@ -312,7 +335,7 @@ public class PlayerMovement : MonoBehaviour
         transform.position = checkpointPos;
         if (enemyManager != null) enemyManager.ResetEnemies();
         isDead = false;
-        rb.gravityScale = baseGravity;              
+        rb.gravityScale = baseGravity;
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
         if (playerCollider != null) playerCollider.enabled = true;
         animator.Play("Movement");

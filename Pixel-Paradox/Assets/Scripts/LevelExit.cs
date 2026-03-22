@@ -31,12 +31,12 @@ public class LevelExit : MonoBehaviour
         {
             if (playerScript != null && playerScript.hasCard)
             {
-                Debug.Log("Sikeres kijutás kártyával!");
+                Debug.Log("Succesful escape with card");
                 SceneManager.LoadScene(nextLevelName);
             }
             else
             {
-                Debug.Log("Nincs nálad a kártya, nem mehetsz át!");
+                Debug.Log("You can not escape without the card");
             }
         }
     }
