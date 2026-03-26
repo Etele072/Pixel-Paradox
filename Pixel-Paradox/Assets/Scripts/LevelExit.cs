@@ -5,11 +5,12 @@ using UnityEngine.SceneManagement;
 public class LevelExit : MonoBehaviour
 {
     public string nextLevelName;
+    [Header("Requirements")]
+    public int requiredCards = 1;
 
     private bool playerInside = false;
     private PlayerInput playerInput;
     private InputAction interactAction;
-
     private PlayerMovement playerScript;
 
     void Start()
@@ -21,7 +22,9 @@ public class LevelExit : MonoBehaviour
             playerScript = playerObj.GetComponent<PlayerMovement>();
 
             if (playerInput != null)
+            {
                 interactAction = playerInput.actions["Interact"];
+            }
         }
     }
 
@@ -29,14 +32,18 @@ public class LevelExit : MonoBehaviour
     {
         if (playerInside && interactAction != null && interactAction.WasPressedThisFrame())
         {
-            if (playerScript != null && playerScript.hasCard)
+            if (playerScript != null)
             {
-                Debug.Log("Succesful escape with card");
-                SceneManager.LoadScene(nextLevelName);
-            }
-            else
-            {
-                Debug.Log("You can not escape without the card");
+                if (playerScript.cardsCollected >= requiredCards)
+                {
+                    Debug.Log($"Sikeres szökés! Megvan mind a {playerScript.cardsCollected} kártya.");
+                    SceneManager.LoadScene(nextLevelName);
+                }
+                else
+                {
+                    int missing = requiredCards - playerScript.cardsCollected;
+                    Debug.Log($"Még kellene {missing} kártya a kijárathoz!");
+                }
             }
         }
     }
