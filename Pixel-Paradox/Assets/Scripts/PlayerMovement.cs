@@ -1,4 +1,6 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -10,8 +12,10 @@ public class PlayerMovement : MonoBehaviour
     #region Variables: Components & Settings
 
     [Header("Inventory & UI")]
-    public bool hasCard = false;
+    public int cardsCollected = 0;
     public GameObject cardIconUI;
+    public TextMeshProUGUI cardCountText; 
+    private List<GameObject> collectedCardsList = new List<GameObject>();
 
     [Header("Components")]
     public Rigidbody2D rb;
@@ -77,12 +81,10 @@ public class PlayerMovement : MonoBehaviour
         Application.targetFrameRate = 144;
         checkpointPos = transform.position;
         enemyManager = UnityEngine.Object.FindFirstObjectByType<EnemyManager>();
+        MusicManager.Instance.PlayMusic("Game");
 
         spriteRenderer = GetComponent<SpriteRenderer>();
-        if (spriteRenderer != null)
-        {
-            charMaterial = spriteRenderer.material;
-        }
+        if (spriteRenderer != null) charMaterial = spriteRenderer.material;
 
         if (playerCollider != null)
         {
@@ -90,15 +92,12 @@ public class PlayerMovement : MonoBehaviour
             originalOffset = playerCollider.offset;
         }
 
-        if (cardIconUI != null && !hasCard)
-        {
-            cardIconUI.SetActive(false);
-        }
+        UpdateCardUI();
     }
 
     void FixedUpdate()
     {
-        if (hasCard && cardIconUI != null)
+        if (cardsCollected > 0 && cardIconUI != null)
         {
             float pulse = 1.1f + Mathf.Sin(Time.time * 5f) * 0.1f;
             cardIconUI.transform.localScale = new Vector3(pulse, pulse, 1f);
@@ -118,16 +117,12 @@ public class PlayerMovement : MonoBehaviour
 
         bool grounded = isGrounded();
 
-        if (grounded)
-            coyoteTimeCounter = coyoteTime;
-        else
-            coyoteTimeCounter -= Time.deltaTime;
+        if (grounded) coyoteTimeCounter = coyoteTime;
+        else coyoteTimeCounter -= Time.deltaTime;
 
-        if (jumpBufferCounter > 0)
-            jumpBufferCounter -= Time.deltaTime;
+        if (jumpBufferCounter > 0) jumpBufferCounter -= Time.deltaTime;
 
-        if (jumpBufferCounter > 0f && coyoteTimeCounter > 0f)
-            ExecuteJump();
+        if (jumpBufferCounter > 0f && coyoteTimeCounter > 0f) ExecuteJump();
 
         ApplyMovement(grounded);
         Gravity();
@@ -138,7 +133,6 @@ public class PlayerMovement : MonoBehaviour
     #endregion
 
     #region Movement Core Logic
-
     private void UpdateDashIndicator()
     {
         if (charMaterial != null)
@@ -151,22 +145,17 @@ public class PlayerMovement : MonoBehaviour
     private void CheckSlope()
     {
         RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, slopeCheckDistance, groundLayer);
-
         if (hit)
         {
             slopeNormalPerp = Vector2.Perpendicular(hit.normal).normalized;
             isOnSlope = hit.normal != Vector2.up;
         }
-        else
-        {
-            isOnSlope = false;
-        }
+        else isOnSlope = false;
     }
 
     private void ApplyMovement(bool grounded)
     {
         float speed = isCrouching ? crawlSpeed : moveSpeed;
-
         if (grounded && isOnSlope && !isDashing)
         {
             rb.linearVelocity = new Vector2(speed * -horizontalMovement * slopeNormalPerp.x, speed * -horizontalMovement * slopeNormalPerp.y);
@@ -196,35 +185,22 @@ public class PlayerMovement : MonoBehaviour
             rb.gravityScale = baseGravity * fallSpeedMultiplier;
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, Mathf.Max(rb.linearVelocity.y, -maxFallSpeed));
         }
-        else
-        {
-            rb.gravityScale = baseGravity;
-        }
+        else rb.gravityScale = baseGravity;
     }
     #endregion
 
     #region Input Handlers
-    public void Move(InputAction.CallbackContext context)
-    {
-        horizontalMovement = isDead ? 0 : context.ReadValue<Vector2>().x;
-    }
+    public void Move(InputAction.CallbackContext context) => horizontalMovement = isDead ? 0 : context.ReadValue<Vector2>().x;
 
     public void Jump(InputAction.CallbackContext context)
     {
         if (isDead) return;
-
-        // Csak akkor nézzük a plafont, ha guggolunk, különben fal mellett nem enged ugrani
         if (isCrouching && ceilingCheckPos != null)
         {
-            bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
-            if (ceilingAbove) return;
+            if (Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer)) return;
         }
 
-        if (context.performed)
-        {
-            jumpBufferCounter = jumpBufferTime;
-        }
-
+        if (context.performed) jumpBufferCounter = jumpBufferTime;
         if (context.canceled && rb.linearVelocity.y > 0)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * 0.5f);
@@ -235,55 +211,51 @@ public class PlayerMovement : MonoBehaviour
     public void Dash(InputAction.CallbackContext context)
     {
         if (isDead || !context.performed || !canDash) return;
-
-        // Csak akkor nézzük a plafont dashelés előtt, ha guggolunk
         if (isCrouching && ceilingCheckPos != null)
         {
-            bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
-            if (ceilingAbove) return;
+            if (Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer)) return;
         }
-
         StartCoroutine(DashCoroutine());
     }
 
     public void Crouch(InputAction.CallbackContext context)
     {
-        if (context.performed)
-        {
-            wantsToStandUp = false;
-            StartCrouch();
-        }
+        if (context.performed) { wantsToStandUp = false; StartCrouch(); }
         else if (context.canceled)
         {
-            bool ceilingAbove = false;
-            if (ceilingCheckPos != null)
-            {
-                ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
-            }
-
-            if (!ceilingAbove)
-            {
-                StopCrouch();
-                wantsToStandUp = false;
-            }
-            else
-            {
-                wantsToStandUp = true;
-            }
+            bool ceilingAbove = ceilingCheckPos != null && Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
+            if (!ceilingAbove) { StopCrouch(); wantsToStandUp = false; }
+            else wantsToStandUp = true;
         }
     }
     #endregion
 
-    #region Helper Methods (Dash, Flip, Crouch, Health)
-    private IEnumerator DashCoroutine()
+    #region Helper Methods
+    private void UpdateCardUI()
     {
-        if (SoundManager.Instance != null)
+        if (cardIconUI != null)
         {
-            SoundManager.Instance.PlaySound2D("Dash");
+            cardIconUI.SetActive(cardsCollected > 0);
         }
 
-        canDash = false;
-        isDashing = true;
+        if (cardCountText != null)
+        {
+            if (cardsCollected > 1)
+            {
+                cardCountText.text = cardsCollected.ToString();
+                cardCountText.gameObject.SetActive(true);
+            }
+            else
+            {
+                cardCountText.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    private IEnumerator DashCoroutine()
+    {
+        if (SoundManager.Instance != null) SoundManager.Instance.PlaySound2D("Dash");
+        canDash = false; isDashing = true;
         animator.SetBool("isDashing", true);
         animator.SetTrigger("DashTrigger");
 
@@ -292,7 +264,6 @@ public class PlayerMovement : MonoBehaviour
         rb.linearVelocity = new Vector2(transform.localScale.x * dashingPower, 0f);
 
         yield return new WaitForSeconds(dashingTime);
-
         rb.gravityScale = originalGravity;
         isDashing = false;
         animator.SetBool("isDashing", false);
@@ -331,8 +302,11 @@ public class PlayerMovement : MonoBehaviour
     {
         if (wantsToStandUp && isCrouching && ceilingCheckPos != null)
         {
-            bool ceilingAbove = Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer);
-            if (!ceilingAbove) { StopCrouch(); wantsToStandUp = false; }
+            if (!Physics2D.OverlapCircle(ceilingCheckPos.position, ceilingCheckRadius, groundLayer))
+            {
+                StopCrouch();
+                wantsToStandUp = false;
+            }
         }
     }
 
@@ -357,6 +331,15 @@ public class PlayerMovement : MonoBehaviour
     private IEnumerator DeathDelay()
     {
         yield return new WaitForSecondsRealtime(0.8f);
+
+        foreach (GameObject card in collectedCardsList)
+        {
+            if (card != null) card.SetActive(true);
+        }
+        collectedCardsList.Clear();
+        cardsCollected = 0;
+        UpdateCardUI();
+
         transform.position = checkpointPos;
         if (enemyManager != null) enemyManager.ResetEnemies();
 
@@ -370,14 +353,17 @@ public class PlayerMovement : MonoBehaviour
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.CompareTag("Spike")) Die();
-
         if (collision.CompareTag("Checkpoint")) checkpointPos = collision.transform.position;
 
         if (collision.CompareTag("Card"))
         {
-            hasCard = true;
-            if (cardIconUI != null) cardIconUI.SetActive(true);
-            Destroy(collision.gameObject);
+            cardsCollected++;
+            collectedCardsList.Add(collision.gameObject);
+            collision.gameObject.SetActive(false);
+
+            UpdateCardUI();
+
+            if (SoundManager.Instance != null) SoundManager.Instance.PlaySound2D("Pickup");
         }
     }
 
