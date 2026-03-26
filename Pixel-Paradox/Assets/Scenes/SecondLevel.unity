@@ -5472,7 +5472,7 @@ Transform:
   m_GameObject: {fileID: 758228028}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 81.35272, y: -12.580002, z: -1}
+  m_LocalPosition: {x: -25.153885, y: -12.674995, z: -1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7668,7 +7668,7 @@ Transform:
   m_GameObject: {fileID: 1280368151}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 90.65, y: -12.58, z: -1}
+  m_LocalPosition: {x: -35.856, y: -12.675, z: -1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -16037,9 +16037,9 @@ TilemapRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 1859840385
-  m_SortingLayer: 7
-  m_SortingOrder: 8
+  m_SortingLayerID: -803298101
+  m_SortingLayer: 6
+  m_SortingOrder: 5
   m_MaskInteraction: 0
   m_ChunkSize: {x: 32, y: 32, z: 32}
   m_ChunkCullingBounds: {x: 0.71875, y: 1.4590466, z: 0}
@@ -17324,8 +17324,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1440111877}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 90.65, y: -12.58, z: 0}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -35.856, y: -12.675, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -19688,8 +19688,8 @@ TilemapRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 1859840385
-  m_SortingLayer: 7
+  m_SortingLayerID: -803298101
+  m_SortingLayer: 6
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_ChunkSize: {x: 32, y: 32, z: 32}
@@ -21542,7 +21542,7 @@ Tilemap:
     second:
       serializedVersion: 2
       m_TileIndex: 11
-      m_TileSpriteIndex: 37
+      m_TileSpriteIndex: 31
       m_TileMatrixIndex: 0
       m_TileColorIndex: 0
       m_TileObjectToInstantiateIndex: 65535
@@ -26732,7 +26732,9 @@ Tilemap:
   - m_RefCount: 1
     m_Data: {fileID: -1204168485, guid: 4ec57d6a6d4ac5843a5a46530dbb981c, type: 3}
   - m_RefCount: 1
-    m_Data: {fileID: -665493182, guid: 4ec57d6a6d4ac5843a5a46530dbb981c, type: 3}
+    m_Data: {fileID: 1384274487, guid: 4ec57d6a6d4ac5843a5a46530dbb981c, type: 3}
+  - m_RefCount: 1
+    m_Data: {fileID: -1810999689, guid: 4ec57d6a6d4ac5843a5a46530dbb981c, type: 3}
   - m_RefCount: 7
     m_Data: {fileID: 1089850579, guid: 4ec57d6a6d4ac5843a5a46530dbb981c, type: 3}
   - m_RefCount: 4
