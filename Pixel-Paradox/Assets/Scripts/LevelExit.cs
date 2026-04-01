@@ -36,13 +36,13 @@ public class LevelExit : MonoBehaviour
             {
                 if (playerScript.cardsCollected >= requiredCards)
                 {
-                    Debug.Log($"Sikeres szökés! Megvan mind a {playerScript.cardsCollected} kártya.");
+                    Debug.Log($"Success");
                     SceneManager.LoadScene(nextLevelName);
                 }
                 else
                 {
                     int missing = requiredCards - playerScript.cardsCollected;
-                    Debug.Log($"Még kellene {missing} kártya a kijárathoz!");
+                    Debug.Log($"One or more cards are missing");
                 }
             }
         }

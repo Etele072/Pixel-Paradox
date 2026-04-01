@@ -9,11 +9,11 @@ using UnityEngine.InputSystem;
 
 public class MainMenuController : MonoBehaviour
 {
-    [Header("Panel Beállítások")]
+    [Header("Panel Settings")]
     public GameObject mainMenuContainer;  
     public GameObject optionsContainer;    
 
-    [Header("Controller Support - Elsõ kijelölt gombok")]
+    [Header("Controller Support")]
     public GameObject firstSelectedMain;   
     public GameObject firstSelectedOptions; 
 
