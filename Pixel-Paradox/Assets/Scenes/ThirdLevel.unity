@@ -5797,8 +5797,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   soundManager: {fileID: 0}
   cardsCollected: 0
-  cardIconUI: {fileID: 0}
-  cardCountText: {fileID: 0}
+  cardIconUI: {fileID: 1755402542}
+  cardCountText: {fileID: 508197479}
   rb: {fileID: 873454377}
   animator: {fileID: 873454375}
   playerCollider: {fileID: 873454374}
